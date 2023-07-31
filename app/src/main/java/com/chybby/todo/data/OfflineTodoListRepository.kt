@@ -42,7 +42,7 @@ class OfflineTodoListRepository @Inject constructor(
 
     override suspend fun renameTodoList(id: Long, name: String) = todoListDao.updateTodoListName(id, name)
 
-    // TODO: Delete operations
+    override suspend fun deleteTodoList(id: Long) = todoListDao.deleteTodoList(id)
 
     // TodoItem.
 

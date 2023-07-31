@@ -35,14 +35,16 @@ class HomeScreenViewModel @Inject constructor(
             HomeScreenUiState(listOf(), null),
         )
 
-    fun addTodoList() {
-        viewModelScope.launch {
-            _newTodoListId = todoListRepository.addTodoList()
-        }
+    fun addTodoList() = viewModelScope.launch {
+        _newTodoListId = todoListRepository.addTodoList()
     }
 
     fun navigatedToNewTodoList() {
         _newTodoListId = null
+    }
+
+    fun deleteTodoList(id: Long) = viewModelScope.launch {
+        todoListRepository.deleteTodoList(id)
     }
 }
 

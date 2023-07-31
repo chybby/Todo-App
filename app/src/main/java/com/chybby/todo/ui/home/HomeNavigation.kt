@@ -22,7 +22,8 @@ fun NavGraphBuilder.homeScreen(
             onNavigateToTodoList = {
                 onNavigateToTodoList(it)
                 viewModel.navigatedToNewTodoList()
-            }
+            },
+            onDeleteTodoList = viewModel::deleteTodoList,
         )
     }
 }
