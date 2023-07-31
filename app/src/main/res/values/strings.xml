@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Todo</string>
+    <string name="new_todo_list">New Todo List</string>
+    <string name="back">Back</string>
+    <string name="add_reminder">Add reminder</string>
+    <string name="add_item">Add item</string>
+</resources>
