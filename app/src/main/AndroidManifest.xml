@@ -16,6 +16,7 @@
 
         <activity
             android:name=".ui.MainActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true"
             android:theme="@style/Theme.Todo">
             <intent-filter>

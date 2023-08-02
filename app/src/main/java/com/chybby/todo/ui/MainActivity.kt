@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import com.chybby.todo.ui.theme.TodoTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -16,6 +17,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TodoTheme {
+                // Sets the background of the keyboard while it's opening or closing.
+                window.decorView.rootView.setBackgroundColor(MaterialTheme.colorScheme.background.toArgb())
+
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),

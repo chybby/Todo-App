@@ -83,7 +83,6 @@ fun TodoListScreen(
     ) { contentPadding ->
         var completedItemsShown by rememberSaveable { mutableStateOf(false) }
 
-        // TODO: bottom of list gets covered by keyboard.
         LazyColumn(
             contentPadding = contentPadding,
             modifier = Modifier
@@ -186,6 +185,7 @@ fun TodoTextField(value: String, onValueChanged: (String) -> Unit, textStyle: Te
             // Automatically focus a text field if it is empty.
             // This will focus the list name on navigating to this screen if empty.
             // It will also focus the item summary when a new item is added.
+            // TODO: this focuses an empty item when it scrolls onto the screen.
             focusRequester.requestFocus()
         }
     }
