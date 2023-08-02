@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DismissDirection
 import androidx.compose.material3.DismissValue
@@ -26,10 +27,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismiss
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDismissState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -40,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.chybby.todo.R
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.ui.theme.TodoTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -88,21 +95,71 @@ fun HomeScreen(
     }
 }
 
+@Composable
+fun ConfirmDeleteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(stringResource(R.string.delete_list_question))
+        },
+        text = {
+            Text(stringResource(R.string.are_you_sure_you_want_to_delete_this_list))
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.yes))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.no))
+            }
+        },
+        modifier = modifier,
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoList(todoList: TodoList, onClick: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
     val paddingSmall = dimensionResource(id = R.dimen.padding_small)
 
+    var deleteDialogOpen by remember { mutableStateOf(false) }
+
     val dismissState = rememberDismissState(
         confirmValueChange = {
-            if (it == DismissValue.Default) {
-                false
-            } else {
-                onDelete()
+            if (it != DismissValue.Default) {
+                deleteDialogOpen = true
                 true
+            } else {
+                false
             }
         }
     )
+
+    val coroutineScope = rememberCoroutineScope()
+
+    // Make sure the SwipeToDismiss doesn't get stuck in the swiped state.
+    LaunchedEffect(deleteDialogOpen) {
+        if (!deleteDialogOpen) {
+            dismissState.reset()
+        }
+    }
+
+    if (deleteDialogOpen) {
+        ConfirmDeleteDialog(
+            onConfirm = {
+                deleteDialogOpen = false
+                onDelete()
+            },
+            onDismiss = {
+                deleteDialogOpen = false
+                coroutineScope.launch {
+                    dismissState.reset()
+                }
+            }
+        )
+    }
 
     SwipeToDismiss(
         state = dismissState,
