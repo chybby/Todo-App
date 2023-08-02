@@ -30,6 +30,7 @@ fun NavGraphBuilder.todoListScreen(
             onTodoItemAdded = viewModel::addTodoItem,
             onSummaryChanged = viewModel::editSummary,
             onCompleted = viewModel::editCompleted,
+            onDelete = viewModel::deleteTodoItem,
             onNavigateBack = onNavigateBack
         )
     }

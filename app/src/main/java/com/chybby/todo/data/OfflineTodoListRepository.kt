@@ -59,6 +59,6 @@ class OfflineTodoListRepository @Inject constructor(
 
     override suspend fun completeTodoItem(id: Long, completed: Boolean) = todoListDao.updateTodoItemCompleted(id, completed)
 
-    // TODO: Delete operations
+    override suspend fun deleteTodoItem(id: Long) = todoListDao.deleteTodoItem(id)
 
 }

@@ -42,4 +42,7 @@ interface TodoListDao {
 
     @Query("DELETE from todo_list where id = :id")
     suspend fun deleteTodoList(id: Long)
+
+    @Query("DELETE from todo_item where id = :id")
+    suspend fun deleteTodoItem(id: Long)
 }

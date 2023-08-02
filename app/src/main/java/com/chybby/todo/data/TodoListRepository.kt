@@ -27,5 +27,5 @@ interface TodoListRepository {
 
     suspend fun completeTodoItem(id: Long, completed: Boolean = true)
 
-    // TODO: Delete operations
+    suspend fun deleteTodoItem(id: Long)
 }

@@ -38,10 +38,8 @@ class TodoListScreenViewModel @Inject constructor(
         todoListRepository.renameTodoList(_listId, name)
     }
 
-    fun addTodoItem() {
-        viewModelScope.launch {
-            todoListRepository.addTodoItem(_listId)
-        }
+    fun addTodoItem() = viewModelScope.launch {
+        todoListRepository.addTodoItem(_listId)
     }
 
     fun editSummary(id: Long, summary: String) = viewModelScope.launch {
@@ -50,6 +48,10 @@ class TodoListScreenViewModel @Inject constructor(
 
     fun editCompleted(id: Long, completed: Boolean) = viewModelScope.launch {
         todoListRepository.completeTodoItem(id, completed)
+    }
+
+    fun deleteTodoItem(id: Long) = viewModelScope.launch {
+        todoListRepository.deleteTodoItem(id)
     }
 }
 
