@@ -2,6 +2,7 @@ package com.chybby.todo.ui.list
 
 import android.content.res.Configuration
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Checkbox
@@ -65,6 +67,7 @@ fun TodoListScreen(
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
     onDelete: (Long) -> Unit,
+    onDeleteCompleted: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -114,20 +117,34 @@ fun TodoListScreen(
 
             // Completed items.
             item {
-                TextButton(onClick = { completedItemsShown = !completedItemsShown }) {
-                    val icon = when(completedItemsShown) {
-                        true -> { Icons.Default.KeyboardArrowDown }
-                        false -> { Icons.Default.KeyboardArrowUp }
-                    }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    TextButton(
+                        onClick = { completedItemsShown = !completedItemsShown }
+                    ) {
+                        val icon = when(completedItemsShown) {
+                            true -> { Icons.Default.KeyboardArrowDown }
+                            false -> { Icons.Default.KeyboardArrowUp }
+                        }
 
-                    val contentDescription = when(completedItemsShown) {
-                        true -> { stringResource(R.string.hide_completed_items) }
-                        false -> { stringResource(R.string.show_completed_items) }
-                    }
+                        val contentDescription = when(completedItemsShown) {
+                            true -> { stringResource(R.string.hide_completed_items) }
+                            false -> { stringResource(R.string.show_completed_items) }
+                        }
 
-                    Icon(icon, contentDescription)
-                    Spacer(Modifier.width(smallPadding))
-                    Text(text = "Completed items", style = MaterialTheme.typography.bodyMedium)
+                        Icon(icon, contentDescription)
+                        Spacer(Modifier.width(smallPadding))
+                        Text(text = "Completed items", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    IconButton(
+                        onClick = onDeleteCompleted,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                    ) {
+                        Icon(Icons.Default.Delete, stringResource(R.string.delete_all_completed_items))
+                    }
                 }
             }
 
@@ -315,6 +332,7 @@ fun TodoListScreenPreview() {
                 onSummaryChanged = {_, _ -> },
                 onCompleted = {_, _ -> },
                 onDelete = {},
+                onDeleteCompleted = {},
                 onNavigateBack = {},
             )
         }

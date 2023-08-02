@@ -13,7 +13,7 @@ interface TodoListDao {
     @Query("SELECT * FROM todo_list ORDER BY position")
     fun observeTodoLists(): Flow<List<TodoListEntity>>
 
-    @Query("SELECT * FROM todo_list where id = :id")
+    @Query("SELECT * FROM todo_list WHERE id = :id")
     fun observeTodoListById(id: Long): Flow<TodoListEntity>
 
     @Query("SELECT * FROM todo_item WHERE list_id = :listId ORDER BY position")
@@ -40,9 +40,12 @@ interface TodoListDao {
 
     // Delete
 
-    @Query("DELETE from todo_list where id = :id")
+    @Query("DELETE from todo_list WHERE id = :id")
     suspend fun deleteTodoList(id: Long)
 
-    @Query("DELETE from todo_item where id = :id")
+    @Query("DELETE from todo_item WHERE id = :id")
     suspend fun deleteTodoItem(id: Long)
+
+    @Query("DELETE from todo_item WHERE list_id = :listId AND is_completed")
+    suspend fun deleteCompleted(listId: Long)
 }

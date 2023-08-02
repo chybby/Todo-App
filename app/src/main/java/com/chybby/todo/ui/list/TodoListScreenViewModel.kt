@@ -53,6 +53,10 @@ class TodoListScreenViewModel @Inject constructor(
     fun deleteTodoItem(id: Long) = viewModelScope.launch {
         todoListRepository.deleteTodoItem(id)
     }
+
+    fun deleteCompleted() = viewModelScope.launch {
+        todoListRepository.deleteCompleted(_listId)
+    }
 }
 
 data class TodoListScreenUiState(

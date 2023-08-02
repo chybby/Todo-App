@@ -12,4 +12,5 @@
     <string name="delete_item">Delete item</string>
     <string name="hide_completed_items">Hide completed items</string>
     <string name="show_completed_items">Show completed items</string>
+    <string name="delete_all_completed_items">Delete all completed items</string>
 </resources>

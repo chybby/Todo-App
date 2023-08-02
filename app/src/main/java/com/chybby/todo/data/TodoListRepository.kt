@@ -19,6 +19,8 @@ interface TodoListRepository {
 
     suspend fun deleteTodoList(id: Long)
 
+    suspend fun deleteCompleted(id: Long)
+
     // TodoItem.
 
     suspend fun addTodoItem(listId: Long): Long
