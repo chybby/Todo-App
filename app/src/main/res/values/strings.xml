@@ -10,4 +10,6 @@
     <string name="yes">Yes</string>
     <string name="no">No</string>
     <string name="delete_item">Delete item</string>
+    <string name="hide_completed_items">Hide completed items</string>
+    <string name="show_completed_items">Show completed items</string>
 </resources>

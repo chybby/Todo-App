@@ -14,6 +14,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DismissDirection
 import androidx.compose.material3.DismissValue
@@ -79,6 +81,8 @@ fun TodoListScreen(
         },
         modifier = modifier
     ) { contentPadding ->
+        var completedItemsShown by rememberSaveable { mutableStateOf(false) }
+
         // TODO: bottom of list gets covered by keyboard.
         LazyColumn(
             contentPadding = contentPadding,
@@ -110,17 +114,38 @@ fun TodoListScreen(
             }
 
             // Completed items.
-            // TODO: put completed items in a collapsible dropdown.
-            items(todoItemsByCompleted.getOrDefault(true, listOf()), key = { it.id }) {todoItem ->
-                // TODO: allow summary changes on completed items?
-                TodoItem(
-                    todoItem = todoItem,
-                    onCompleted = { onCompleted(todoItem.id, it) },
-                    onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
-                    onDelete = { onDelete(todoItem.id) },
-                    modifier = Modifier
-                        .animateItemPlacement()
-                )
+            item {
+                TextButton(onClick = { completedItemsShown = !completedItemsShown }) {
+                    val icon = when(completedItemsShown) {
+                        true -> { Icons.Default.KeyboardArrowDown }
+                        false -> { Icons.Default.KeyboardArrowUp }
+                    }
+
+                    val contentDescription = when(completedItemsShown) {
+                        true -> { stringResource(R.string.hide_completed_items) }
+                        false -> { stringResource(R.string.show_completed_items) }
+                    }
+
+                    Icon(icon, contentDescription)
+                    Spacer(Modifier.width(smallPadding))
+                    Text(text = "Completed items", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+
+            if (completedItemsShown) {
+                items(
+                    todoItemsByCompleted.getOrDefault(true, listOf()),
+                    key = { it.id }) { todoItem ->
+                    // TODO: allow summary changes on completed items?
+                    TodoItem(
+                        todoItem = todoItem,
+                        onCompleted = { onCompleted(todoItem.id, it) },
+                        onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
+                        onDelete = { onDelete(todoItem.id) },
+                        modifier = Modifier
+                            .animateItemPlacement()
+                    )
+                }
             }
         }
     }
