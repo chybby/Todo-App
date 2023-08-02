@@ -3,8 +3,10 @@ package com.chybby.todo.ui.list
 import android.content.res.Configuration
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
@@ -23,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismiss
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDismissState
 import androidx.compose.runtime.Composable
@@ -38,6 +41,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -62,6 +66,8 @@ fun TodoListScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val smallPadding = dimensionResource(R.dimen.padding_small)
+    
     Scaffold (
         topBar = {
             TodoListScreenTopBar(
@@ -96,10 +102,9 @@ fun TodoListScreen(
 
             // Add new item button.
             item {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onTodoItemAdded ) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_item))
-                    }
+                TextButton(onClick = onTodoItemAdded) {
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_item))
+                    Spacer(Modifier.width(smallPadding))
                     Text(text = stringResource(R.string.add_item), style = MaterialTheme.typography.bodyMedium)
                 }
             }
