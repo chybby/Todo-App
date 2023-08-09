@@ -1,5 +1,9 @@
 package com.chybby.todo.ui.list
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,24 +26,32 @@ class TodoListScreenViewModel @Inject constructor(
     private val _todoListArgs = TodoListArgs(savedStateHandle)
     private val _listId = _todoListArgs.todoListId
 
+    private var _newTodoItemId: Long? by mutableStateOf(null)
+
     val uiState: StateFlow<TodoListScreenUiState> = combine(
+        snapshotFlow { _newTodoItemId },
         todoListRepository.getTodoListStreamById(_listId),
         todoListRepository.getTodoItemsStreamByListId(_listId),
-    ) { todoList, todoItems ->
-        TodoListScreenUiState(todoList, todoItems)
+    ) { newTodoItemId, todoList, todoItems ->
+        TodoListScreenUiState(todoList, todoItems, newTodoItemId)
     }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            TodoListScreenUiState(TodoList(), listOf(), true),
+            TodoListScreenUiState(TodoList(), listOf(), null, true),
         )
 
     fun editName(name: String) = viewModelScope.launch {
         todoListRepository.renameTodoList(_listId, name)
     }
 
-    fun addTodoItem() = viewModelScope.launch {
-        todoListRepository.addTodoItem(_listId)
+    fun addTodoItem(afterPosition: Int) = viewModelScope.launch {
+        // TODO: position new item in correct position.
+        _newTodoItemId = todoListRepository.addTodoItem(_listId)
+    }
+
+    fun ackNewTodoItem() {
+        _newTodoItemId = null
     }
 
     fun editSummary(id: Long, summary: String) = viewModelScope.launch {
@@ -62,5 +74,6 @@ class TodoListScreenViewModel @Inject constructor(
 data class TodoListScreenUiState(
     val todoList: TodoList,
     val todoItems: List<TodoItem>,
+    val newTodoItemId: Long? = null,
     val loading: Boolean = false,
 )

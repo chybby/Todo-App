@@ -39,7 +39,7 @@ class HomeScreenViewModel @Inject constructor(
         _newTodoListId = todoListRepository.addTodoList()
     }
 
-    fun navigatedToNewTodoList() {
+    fun ackNewTodoList() {
         _newTodoListId = null
     }
 
