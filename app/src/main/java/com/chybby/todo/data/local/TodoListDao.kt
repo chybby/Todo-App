@@ -1,8 +1,9 @@
 package com.chybby.todo.data.local
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
-import androidx.room.Upsert
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -19,13 +20,29 @@ interface TodoListDao {
     @Query("SELECT * FROM todo_item WHERE list_id = :listId ORDER BY position")
     fun observeTodoItemsByListId(listId: Long): Flow<List<TodoItemEntity>>
 
-    // Upsert
+    @Query("SELECT position FROM todo_item WHERE list_id = :listId ORDER BY position DESC LIMIT 1")
+    suspend fun getLastPositionInList(listId: Long): Int
 
-    @Upsert
-    suspend fun upsertTodoList(todoItem: TodoListEntity): Long
+    // Insert
 
-    @Upsert
-    suspend fun upsertTodoItem(todoItem: TodoItemEntity): Long
+    @Insert
+    suspend fun insertTodoList(todoItem: TodoListEntity): Long
+
+    @Insert
+    suspend fun insertTodoItem(todoItem: TodoItemEntity): Long
+
+    @Transaction
+    suspend fun insertTodoItemLast(todoItem: TodoItemEntity): Long {
+        val position = getLastPositionInList(todoItem.listId)
+        val todoItemWithPosition = todoItem.copy(position = position)
+        return insertTodoItem(todoItemWithPosition)
+    }
+
+    @Transaction
+    suspend fun insertTodoItemInPosition(todoItem: TodoItemEntity): Long {
+        prepareForTodoItemInsertion(todoItem.listId, todoItem.position)
+        return insertTodoItem(todoItem)
+    }
 
     // Modify
 
@@ -37,6 +54,9 @@ interface TodoListDao {
 
     @Query("UPDATE todo_item SET is_completed = :completed WHERE id = :id")
     suspend fun updateTodoItemCompleted(id: Long, completed: Boolean)
+
+    @Query("UPDATE todo_item SET position = position + 1 WHERE list_id = :listId AND position >= :position")
+    suspend fun prepareForTodoItemInsertion(listId: Long, position: Int)
 
     // Delete
 

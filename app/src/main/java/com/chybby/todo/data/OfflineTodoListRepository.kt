@@ -37,7 +37,7 @@ class OfflineTodoListRepository @Inject constructor(
     // TodoList.
 
     override suspend fun addTodoList(): Long {
-        return todoListDao.upsertTodoList(TodoListEntity(name = "", position = 0)) // TODO: position at the end.
+        return todoListDao.insertTodoList(TodoListEntity(name = "", position = 0)) // TODO: position at the end.
     }
 
     override suspend fun renameTodoList(id: Long, name: String) = todoListDao.updateTodoListName(id, name)
@@ -48,13 +48,19 @@ class OfflineTodoListRepository @Inject constructor(
 
     // TodoItem.
 
-    override suspend fun addTodoItem(listId: Long): Long {
-        return todoListDao.upsertTodoItem(TodoItemEntity(
+    override suspend fun addTodoItem(listId: Long, afterPosition: Int?): Long {
+        val todoItem = TodoItemEntity(
             summary = "",
             isCompleted = false,
             listId = listId,
-            position = 0, // TODO: position at the end.
-        ))
+            position = afterPosition?.plus(1) ?: 0,
+        )
+
+        return if (afterPosition == null) {
+            todoListDao.insertTodoItemLast(todoItem)
+        } else {
+            todoListDao.insertTodoItemInPosition(todoItem)
+        }
     }
 
     override suspend fun editTodoItemSummary(id: Long, summary: String) = todoListDao.updateTodoItemSummary(id, summary)

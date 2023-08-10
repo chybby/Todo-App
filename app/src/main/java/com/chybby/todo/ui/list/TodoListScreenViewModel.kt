@@ -45,9 +45,8 @@ class TodoListScreenViewModel @Inject constructor(
         todoListRepository.renameTodoList(_listId, name)
     }
 
-    fun addTodoItem(afterPosition: Int) = viewModelScope.launch {
-        // TODO: position new item in correct position.
-        _newTodoItemId = todoListRepository.addTodoItem(_listId)
+    fun addTodoItem(afterPosition: Int? = null) = viewModelScope.launch {
+        _newTodoItemId = todoListRepository.addTodoItem(_listId, afterPosition)
     }
 
     fun ackNewTodoItem() {
