@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,8 +63,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.chybby.todo.R
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
+import com.chybby.todo.ui.isItemWithIndexVisible
 import com.chybby.todo.ui.theme.TodoTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 const val TYPING_PERSIST_DELAY_MS: Long = 300
 
@@ -96,6 +99,8 @@ fun TodoListScreen(
         uiState.todoItems.associate { Pair(it.id, FocusRequester()) }
     }
 
+    val coroutineScope = rememberCoroutineScope()
+
     val todoItemsByCompleted = uiState.todoItems.groupBy { it.isCompleted }
 
     Scaffold (
@@ -123,20 +128,30 @@ fun TodoListScreen(
             items(uncompletedItems.size, key = { uncompletedItems[it].id }) {index ->
                 val todoItem = uncompletedItems[index]
                 val focusRequester = itemFocusRequesters.getValue(todoItem.id)
-                val previousFocusRequester = if (index == 0) {
-                    null
-                } else {
-                    itemFocusRequesters.getValue(uncompletedItems[index - 1].id)
-                }
 
                 TodoItem(
                     todoItem = todoItem,
                     onCompleted = { onCompleted(todoItem.id, it) },
                     onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
-                    onDelete = { onDelete(todoItem.id) },
+                    onDelete = { focusPreviousItem ->
+                        if (focusPreviousItem) {
+                            coroutineScope.launch {
+                                val previousIndex = index - 1
+                                if (previousIndex >= 0) {
+                                    if (!listState.isItemWithIndexVisible(previousIndex)) {
+                                        listState.animateScrollToItem(previousIndex)
+                                    }
+                                    // TODO: sometimes this crashes??
+                                    itemFocusRequesters.getValue(uncompletedItems[previousIndex].id).requestFocus()
+                                    onDelete(todoItem.id)
+                                }
+                            }
+                        } else {
+                            onDelete(todoItem.id)
+                        }
+                    },
                     onNext = { onTodoItemAdded(todoItem.position) },
                     focusRequester = focusRequester,
-                    previousFocusRequester = previousFocusRequester,
                     modifier = Modifier
                         .animateItemPlacement()
                 )
@@ -224,7 +239,9 @@ fun TodoListScreen(
     // Scroll the list to any newly added item.
     LaunchedEffect(uiState.todoItems) {
         if (uiState.newTodoItemId != null) {
-            val focusedIndex = todoItemsByCompleted.getValue(false).indexOfFirst { it.id == uiState.newTodoItemId }
+            val focusedIndex = todoItemsByCompleted.getValue(false).indexOfFirst {
+                it.id == uiState.newTodoItemId
+            }
             if (focusedIndex >= 0) {
                 listState.animateScrollToItem(focusedIndex)
             }
@@ -328,10 +345,9 @@ fun TodoItem(
     todoItem: TodoItem,
     onCompleted: (Boolean) -> Unit,
     onSummaryChanged: (String) -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (focusPreviousItem: Boolean) -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
-    previousFocusRequester: FocusRequester? = null,
     onNext: () -> Unit = {},
 ) {
 
@@ -339,7 +355,7 @@ fun TodoItem(
         positionalThreshold = { distance -> distance * 0.33f },
         confirmValueChange = {
             if (it != DismissValue.Default) {
-                onDelete()
+                onDelete(false)
                 true
             } else {
                 false
@@ -366,11 +382,7 @@ fun TodoItem(
                     focusRequester = focusRequester,
                     imeAction = if (todoItem.isCompleted) ImeAction.Done else ImeAction.Next,
                     onNext = onNext,
-                    onDelete = {
-                        onDelete()
-                        // TODO: crashes if previous item is not on screen.
-                        previousFocusRequester?.requestFocus()
-                    },
+                    onDelete = { onDelete(true) },
                 )
             }
         }
