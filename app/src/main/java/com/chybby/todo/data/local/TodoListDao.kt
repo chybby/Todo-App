@@ -20,20 +20,30 @@ interface TodoListDao {
     @Query("SELECT * FROM todo_item WHERE list_id = :listId ORDER BY position")
     fun observeTodoItemsByListId(listId: Long): Flow<List<TodoItemEntity>>
 
+    @Query("SELECT position FROM todo_list ORDER BY position DESC LIMIT 1")
+    suspend fun getLastListPosition(): Int
+
     @Query("SELECT position FROM todo_item WHERE list_id = :listId ORDER BY position DESC LIMIT 1")
-    suspend fun getLastPositionInList(listId: Long): Int
+    suspend fun getLastItemPositionInList(listId: Long): Int
 
     // Insert
 
     @Insert
-    suspend fun insertTodoList(todoItem: TodoListEntity): Long
+    suspend fun insertTodoList(todoList: TodoListEntity): Long
+
+    @Transaction
+    suspend fun insertTodoListLast(todoList: TodoListEntity): Long {
+        val position = getLastListPosition() + 1
+        val todoListWithPosition = todoList.copy(position = position)
+        return insertTodoList(todoListWithPosition)
+    }
 
     @Insert
     suspend fun insertTodoItem(todoItem: TodoItemEntity): Long
 
     @Transaction
     suspend fun insertTodoItemLast(todoItem: TodoItemEntity): Long {
-        val position = getLastPositionInList(todoItem.listId)
+        val position = getLastItemPositionInList(todoItem.listId) + 1
         val todoItemWithPosition = todoItem.copy(position = position)
         return insertTodoItem(todoItemWithPosition)
     }

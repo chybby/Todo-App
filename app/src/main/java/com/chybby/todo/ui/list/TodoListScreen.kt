@@ -75,7 +75,7 @@ const val TYPING_PERSIST_DELAY_MS: Long = 300
 fun TodoListScreen(
     uiState: TodoListScreenUiState,
     onNameChanged: (String) -> Unit,
-    onTodoItemAdded: (afterPosition: Int) -> Unit,
+    onTodoItemAdded: (afterPosition: Int?) -> Unit,
     onAckNewTodoItem: () -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
@@ -169,7 +169,7 @@ fun TodoListScreen(
             item {
                 TextButton(
                     onClick = {
-                        onTodoItemAdded(uiState.todoItems.lastOrNull()?.position ?: -1)
+                        onTodoItemAdded(null)
                     }
                 ) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_item))
