@@ -3,5 +3,6 @@ package com.chybby.todo.ui
 import androidx.compose.foundation.lazy.LazyListState
 
 fun LazyListState.isItemWithIndexVisible(index: Int): Boolean {
-    return layoutInfo.visibleItemsInfo.any{ it.index == index }
+    val lastVisibleItemIndex = firstVisibleItemIndex + layoutInfo.visibleItemsInfo.size - 1
+    return index in firstVisibleItemIndex + 1 until lastVisibleItemIndex
 }

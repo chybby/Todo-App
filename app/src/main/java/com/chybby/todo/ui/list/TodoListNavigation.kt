@@ -28,7 +28,6 @@ fun NavGraphBuilder.todoListScreen(
             uiState,
             onNameChanged = viewModel::editName,
             onTodoItemAdded = viewModel::addTodoItem,
-            onAckNewTodoItem = viewModel::ackNewTodoItem,
             onSummaryChanged = viewModel::editSummary,
             onCompleted = viewModel::editCompleted,
             onDelete = viewModel::deleteTodoItem,

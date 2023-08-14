@@ -39,7 +39,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,7 +65,6 @@ import com.chybby.todo.data.TodoList
 import com.chybby.todo.ui.isItemWithIndexVisible
 import com.chybby.todo.ui.theme.TodoTheme
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 const val TYPING_PERSIST_DELAY_MS: Long = 300
 
@@ -76,7 +74,6 @@ fun TodoListScreen(
     uiState: TodoListScreenUiState,
     onNameChanged: (String) -> Unit,
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
-    onAckNewTodoItem: () -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
     onDelete: (Long) -> Unit,
@@ -93,13 +90,7 @@ fun TodoListScreen(
 
     val listState = rememberLazyListState()
 
-    val titleFocusRequester = remember { FocusRequester() }
-
-    val itemFocusRequesters = remember(uiState.todoItems) {
-        uiState.todoItems.associate { Pair(it.id, FocusRequester()) }
-    }
-
-    val coroutineScope = rememberCoroutineScope()
+    var indexToFocus by remember { mutableStateOf<Int?>(null) }
 
     val todoItemsByCompleted = uiState.todoItems.groupBy { it.isCompleted }
 
@@ -109,7 +100,6 @@ fun TodoListScreen(
                 name = uiState.todoList.name,
                 onNameChanged = onNameChanged,
                 onNavigateBack = onNavigateBack,
-                titleFocusRequester = titleFocusRequester,
             )
         },
         modifier = modifier
@@ -127,7 +117,8 @@ fun TodoListScreen(
             val uncompletedItems = todoItemsByCompleted.getOrDefault(false, listOf())
             items(uncompletedItems.size, key = { uncompletedItems[it].id }) {index ->
                 val todoItem = uncompletedItems[index]
-                val focusRequester = itemFocusRequesters.getValue(todoItem.id)
+
+                val focusRequester = remember { FocusRequester() }
 
                 TodoItem(
                     todoItem = todoItem,
@@ -135,32 +126,23 @@ fun TodoListScreen(
                     onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
                     onDelete = { focusPreviousItem ->
                         if (focusPreviousItem) {
-                            coroutineScope.launch {
-                                val previousIndex = index - 1
-                                if (previousIndex >= 0) {
-                                    if (!listState.isItemWithIndexVisible(previousIndex)) {
-                                        listState.animateScrollToItem(previousIndex)
-                                    }
-                                    // TODO: sometimes this crashes??
-                                    itemFocusRequesters.getValue(uncompletedItems[previousIndex].id).requestFocus()
-                                    onDelete(todoItem.id)
-                                }
-                            }
-                        } else {
-                            onDelete(todoItem.id)
+                            indexToFocus = if (index >= 1) index - 1 else null
                         }
+                        onDelete(todoItem.id)
                     },
-                    onNext = { onTodoItemAdded(todoItem.position) },
-                    focusRequester = focusRequester,
+                    onNext = {
+                        indexToFocus = index + 1
+                        onTodoItemAdded(todoItem.position)
+                    },
                     modifier = Modifier
-                        .animateItemPlacement()
+                        .animateItemPlacement(),
+                    focusRequester = focusRequester,
                 )
 
-                // Focus this item if it was just added.
-                LaunchedEffect(todoItem) {
-                    if (uiState.newTodoItemId == todoItem.id) {
+                LaunchedEffect(uiState.todoItems.size) {
+                    if (index == indexToFocus) {
                         focusRequester.requestFocus()
-                        onAckNewTodoItem()
+                        indexToFocus = null
                     }
                 }
             }
@@ -169,6 +151,7 @@ fun TodoListScreen(
             item {
                 TextButton(
                     onClick = {
+                        indexToFocus = uncompletedItems.size
                         onTodoItemAdded(null)
                     }
                 ) {
@@ -220,7 +203,6 @@ fun TodoListScreen(
                         onCompleted = { onCompleted(todoItem.id, it) },
                         onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
                         onDelete = { onDelete(todoItem.id) },
-                        focusRequester = itemFocusRequesters.getValue(todoItem.id),
                         modifier = Modifier
                             .animateItemPlacement()
                     )
@@ -229,21 +211,11 @@ fun TodoListScreen(
         }
     }
 
-    // Focus the title if it is empty.
-    LaunchedEffect(uiState.todoList.name) {
-        if (uiState.todoList.name.isEmpty()) {
-            titleFocusRequester.requestFocus()
-        }
-    }
-
-    // Scroll the list to any newly added item.
-    LaunchedEffect(uiState.todoItems) {
-        if (uiState.newTodoItemId != null) {
-            val focusedIndex = todoItemsByCompleted.getValue(false).indexOfFirst {
-                it.id == uiState.newTodoItemId
-            }
-            if (focusedIndex >= 0) {
-                listState.animateScrollToItem(focusedIndex)
+    // Scroll to focused item.
+    LaunchedEffect(uiState.todoItems.size) {
+        indexToFocus?.let { index ->
+            if (!listState.isItemWithIndexVisible(index)) {
+                listState.animateScrollToItem(index)
             }
         }
     }
@@ -255,8 +227,8 @@ fun TodoTextField(
     value: String,
     onValueChanged: (String) -> Unit,
     textStyle: TextStyle,
-    focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester = FocusRequester.Default,
     imeAction: ImeAction = ImeAction.Default,
     onNext: () -> Unit = {},
     onDelete: () -> Unit = {},
@@ -314,8 +286,9 @@ fun TodoListScreenTopBar(
     name: String,
     onNameChanged: (String) -> Unit,
     onNavigateBack: () -> Unit,
-    titleFocusRequester: FocusRequester,
     modifier: Modifier = Modifier) {
+
+    val titleFocusRequester = remember { FocusRequester() }
 
     TopAppBar(
         title = {
@@ -337,6 +310,13 @@ fun TodoListScreenTopBar(
         },
         modifier = modifier,
     )
+
+    // Focus the title if it is empty.
+    LaunchedEffect(name) {
+        if (name.isEmpty()) {
+            titleFocusRequester.requestFocus()
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -346,11 +326,10 @@ fun TodoItem(
     onCompleted: (Boolean) -> Unit,
     onSummaryChanged: (String) -> Unit,
     onDelete: (focusPreviousItem: Boolean) -> Unit,
-    focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    focusRequester: FocusRequester = FocusRequester.Default,
     onNext: () -> Unit = {},
 ) {
-
     val dismissState = rememberDismissState(
         positionalThreshold = { distance -> distance * 0.33f },
         confirmValueChange = {
@@ -438,7 +417,6 @@ fun TodoListScreenPreview() {
                 ),
                 onNameChanged = {},
                 onTodoItemAdded = {},
-                onAckNewTodoItem = {},
                 onSummaryChanged = {_, _ -> },
                 onCompleted = {_, _ -> },
                 onDelete = {},
