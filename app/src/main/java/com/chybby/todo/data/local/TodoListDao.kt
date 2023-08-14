@@ -59,6 +59,18 @@ interface TodoListDao {
     @Query("UPDATE todo_list SET name = :name WHERE id = :id")
     suspend fun updateTodoListName(id: Long, name: String)
 
+    @Query("UPDATE todo_list SET position = position + 1 WHERE position >= :position")
+    suspend fun prepareForTodoListInsertion(position: Int)
+
+    @Query("UPDATE todo_list SET position = :position WHERE id = :id")
+    suspend fun updateTodoListPosition(id: Long, position: Int)
+
+    @Transaction
+    suspend fun moveTodoList(id: Long, position: Int) {
+        prepareForTodoListInsertion(position)
+        updateTodoListPosition(id, position)
+    }
+
     @Query("UPDATE todo_item SET summary = :summary WHERE id = :id")
     suspend fun updateTodoItemSummary(id: Long, summary: String)
 

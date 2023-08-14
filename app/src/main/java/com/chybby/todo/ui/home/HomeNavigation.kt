@@ -19,6 +19,7 @@ fun NavGraphBuilder.homeScreen(
         HomeScreen(
             uiState = uiState,
             onAddTodoList = viewModel::addTodoList,
+            onMoveTodoList = viewModel::moveTodoList,
             onNavigateToTodoList = {
                 onNavigateToTodoList(it)
                 viewModel.ackNewTodoList()

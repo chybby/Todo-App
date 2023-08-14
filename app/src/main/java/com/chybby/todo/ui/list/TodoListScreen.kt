@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -115,8 +116,7 @@ fun TodoListScreen(
 
             // Uncompleted items.
             val uncompletedItems = todoItemsByCompleted.getOrDefault(false, listOf())
-            items(uncompletedItems.size, key = { uncompletedItems[it].id }) {index ->
-                val todoItem = uncompletedItems[index]
+            itemsIndexed(uncompletedItems, key = { _, item -> item.id }) {index, todoItem ->
 
                 val focusRequester = remember { FocusRequester() }
 

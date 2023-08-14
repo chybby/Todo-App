@@ -17,6 +17,8 @@ interface TodoListRepository {
 
     suspend fun renameTodoList(id: Long, name: String)
 
+    suspend fun moveTodoList(id: Long, afterPosition: Int)
+
     suspend fun deleteTodoList(id: Long)
 
     suspend fun deleteCompleted(id: Long)

@@ -6,12 +6,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -45,6 +42,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.chybby.todo.R
 import com.chybby.todo.data.TodoList
+import com.chybby.todo.ui.ReorderableLazyColumn
 import com.chybby.todo.ui.theme.TodoTheme
 import kotlinx.coroutines.launch
 
@@ -53,6 +51,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     uiState: HomeScreenUiState,
     onAddTodoList: () -> Unit,
+    onMoveTodoList: (from: Int, to: Int) -> Unit,
     onNavigateToTodoList: (todoListId: Long) -> Unit,
     onDeleteTodoList: (todoListId: Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -74,23 +73,23 @@ fun HomeScreen(
         },
         modifier = modifier,
     ) { contentPadding ->
-        LazyColumn(
+        ReorderableLazyColumn(
+            items = uiState.todoLists,
+            key = { it.id },
             contentPadding = contentPadding,
             verticalArrangement = spacedBy(paddingSmall),
+            onMove = onMoveTodoList,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(PaddingValues(paddingSmall))
-        ) {
-            items(uiState.todoLists, key = { it.id }) { todoList ->
-                TodoList(
-                    todoList = todoList,
-                    onClick = { onNavigateToTodoList(todoList.id) },
-                    onDelete = { onDeleteTodoList(todoList.id) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateItemPlacement()
-                )
-            }
+                .padding(paddingSmall)
+        ) {_, todoList ->
+            TodoList(
+                todoList = todoList,
+                onClick = { onNavigateToTodoList(todoList.id) },
+                onDelete = { onDeleteTodoList(todoList.id) },
+                modifier = Modifier
+                    .fillMaxWidth()
+            )
         }
     }
 }
@@ -226,14 +225,20 @@ fun HomeScreenPreview() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            HomeScreen(HomeScreenUiState(
-                listOf(
-                    TodoList(name = "Shopping", position = 0),
-                    TodoList(name = "Clothes", position = 1),
-                    TodoList(name = "Books to Read", position = 2),
+            HomeScreen(
+                uiState = HomeScreenUiState(
+                    listOf(
+                        TodoList(name = "Shopping", position = 0),
+                        TodoList(name = "Clothes", position = 1),
+                        TodoList(name = "Books to Read", position = 2),
+                    ),
+                    newTodoListId = null,
                 ),
-                newTodoListId = null,
-            ), {}, {}, {})
+                onAddTodoList = {},
+                onMoveTodoList = {_, _ -> },
+                onNavigateToTodoList = {},
+                onDeleteTodoList = {},
+            )
         }
     }
 }

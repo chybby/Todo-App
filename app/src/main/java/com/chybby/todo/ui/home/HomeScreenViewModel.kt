@@ -43,6 +43,15 @@ class HomeScreenViewModel @Inject constructor(
         _newTodoListId = null
     }
 
+    fun moveTodoList(from: Int, to: Int) = viewModelScope.launch {
+        var afterPosition = -1
+        if (to > 0) {
+            afterPosition = uiState.value.todoLists[to - (if (from < to) 0 else 1)].position
+        }
+        val todoListToMove = uiState.value.todoLists[from]
+        todoListRepository.moveTodoList(todoListToMove.id, afterPosition)
+    }
+
     fun deleteTodoList(id: Long) = viewModelScope.launch {
         todoListRepository.deleteTodoList(id)
     }

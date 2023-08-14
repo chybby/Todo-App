@@ -40,6 +40,8 @@ class OfflineTodoListRepository @Inject constructor(
         return todoListDao.insertTodoListLast(TodoListEntity(name = "", position = 0))
     }
 
+    override suspend fun moveTodoList(id: Long, afterPosition: Int) = todoListDao.moveTodoList(id, afterPosition + 1)
+
     override suspend fun renameTodoList(id: Long, name: String) = todoListDao.updateTodoListName(id, name)
 
     override suspend fun deleteTodoList(id: Long) = todoListDao.deleteTodoList(id)
