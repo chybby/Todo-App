@@ -26,6 +26,9 @@ interface TodoListDao {
     @Query("SELECT position FROM todo_item WHERE list_id = :listId ORDER BY position DESC LIMIT 1")
     suspend fun getLastItemPositionInList(listId: Long): Int
 
+    @Query("SELECT * FROM todo_item WHERE id = :id")
+    suspend fun getTodoItemById(id: Long): TodoItemEntity
+
     // Insert
 
     @Insert
@@ -79,6 +82,16 @@ interface TodoListDao {
 
     @Query("UPDATE todo_item SET position = position + 1 WHERE list_id = :listId AND position >= :position")
     suspend fun prepareForTodoItemInsertion(listId: Long, position: Int)
+
+    @Query("UPDATE todo_item SET position = :position WHERE id = :id")
+    suspend fun updateTodoItemPosition(id: Long, position: Int)
+
+    @Transaction
+    suspend fun moveTodoItem(id: Long, position: Int) {
+        val todoItem = getTodoItemById(id)
+        prepareForTodoItemInsertion(todoItem.listId, position)
+        updateTodoItemPosition(id, position)
+    }
 
     // Delete
 

@@ -1,17 +1,16 @@
 package com.chybby.todo.ui.list
 
 import android.content.res.Configuration
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -43,9 +42,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -54,22 +53,28 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.chybby.todo.R
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.ui.isItemWithIndexVisible
 import com.chybby.todo.ui.theme.TodoTheme
 import kotlinx.coroutines.delay
+import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.ReorderableLazyListState
+import org.burnoutcrew.reorderable.detectReorder
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
+import org.burnoutcrew.reorderable.reorderable
 
 const val TYPING_PERSIST_DELAY_MS: Long = 300
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TodoListScreen(
     uiState: TodoListScreenUiState,
@@ -77,6 +82,7 @@ fun TodoListScreen(
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
+    onMoveTodoItem: (Int, Int) -> Unit,
     onDelete: (Long) -> Unit,
     onDeleteCompleted: () -> Unit,
     onNavigateBack: () -> Unit,
@@ -89,7 +95,9 @@ fun TodoListScreen(
 
     val smallPadding = dimensionResource(R.dimen.padding_small)
 
-    val listState = rememberLazyListState()
+    val state = rememberReorderableLazyListState(onMove = { from, to ->
+        onMoveTodoItem(from.index, to.index)
+    })
 
     var indexToFocus by remember { mutableStateOf<Int?>(null) }
 
@@ -108,10 +116,11 @@ fun TodoListScreen(
         var completedItemsShown by rememberSaveable { mutableStateOf(false) }
 
         LazyColumn(
+            state = state.listState,
             contentPadding = contentPadding,
-            state = listState,
             modifier = Modifier
                 .fillMaxSize()
+                .reorderable(state)
         ) {
 
             // Uncompleted items.
@@ -120,24 +129,27 @@ fun TodoListScreen(
 
                 val focusRequester = remember { FocusRequester() }
 
-                TodoItem(
-                    todoItem = todoItem,
-                    onCompleted = { onCompleted(todoItem.id, it) },
-                    onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
-                    onDelete = { focusPreviousItem ->
-                        if (focusPreviousItem) {
-                            indexToFocus = if (index >= 1) index - 1 else null
-                        }
-                        onDelete(todoItem.id)
-                    },
-                    onNext = {
-                        indexToFocus = index + 1
-                        onTodoItemAdded(todoItem.position)
-                    },
-                    modifier = Modifier
-                        .animateItemPlacement(),
-                    focusRequester = focusRequester,
-                )
+                ReorderableItem(state, key = todoItem.id) {isDragging ->
+                    TodoItem(
+                        todoItem = todoItem,
+                        onCompleted = { onCompleted(todoItem.id, it) },
+                        onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
+                        onDelete = { focusPreviousItem ->
+                            if (focusPreviousItem) {
+                                indexToFocus = if (index >= 1) index - 1 else null
+                            }
+                            onDelete(todoItem.id)
+                        },
+                        onNext = {
+                            indexToFocus = index + 1
+                            onTodoItemAdded(todoItem.position)
+                        },
+                        reorderableLazyListState = state,
+                        modifier = Modifier
+                            .shadow(elevation = if (isDragging) 4.dp else 0.dp),
+                        focusRequester = focusRequester,
+                    )
+                }
 
                 LaunchedEffect(uiState.todoItems.size) {
                     if (index == indexToFocus) {
@@ -203,8 +215,6 @@ fun TodoListScreen(
                         onCompleted = { onCompleted(todoItem.id, it) },
                         onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
                         onDelete = { onDelete(todoItem.id) },
-                        modifier = Modifier
-                            .animateItemPlacement()
                     )
                 }
             }
@@ -214,14 +224,13 @@ fun TodoListScreen(
     // Scroll to focused item.
     LaunchedEffect(uiState.todoItems.size) {
         indexToFocus?.let { index ->
-            if (!listState.isItemWithIndexVisible(index)) {
-                listState.animateScrollToItem(index)
+            if (!state.listState.isItemWithIndexVisible(index)) {
+                state.listState.animateScrollToItem(index)
             }
         }
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun TodoTextField(
     value: String,
@@ -266,7 +275,6 @@ fun TodoTextField(
         textStyle = textStyle.copy(color = MaterialTheme.colorScheme.onBackground),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
         modifier = modifier
-            .fillMaxWidth()
             .focusRequester(focusRequester)
             // Move the cursor to the end of the existing text when focus changes.
             .onFocusChanged { text = text.copy(selection = TextRange(text.text.length)) }
@@ -327,6 +335,7 @@ fun TodoItem(
     onSummaryChanged: (String) -> Unit,
     onDelete: (focusPreviousItem: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    reorderableLazyListState: ReorderableLazyListState? = null,
     focusRequester: FocusRequester = FocusRequester.Default,
     onNext: () -> Unit = {},
 ) {
@@ -362,7 +371,18 @@ fun TodoItem(
                     imeAction = if (todoItem.isCompleted) ImeAction.Done else ImeAction.Next,
                     onNext = onNext,
                     onDelete = { onDelete(true) },
+                    modifier = Modifier
+                        .weight(1f)
                 )
+                if (!todoItem.isCompleted && reorderableLazyListState != null) {
+                    Icon(
+                        painterResource(R.drawable.drag_indicator),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .detectReorder(reorderableLazyListState)
+                            .padding(dimensionResource(R.dimen.padding_small))
+                    )
+                }
             }
         }
     )
@@ -419,6 +439,7 @@ fun TodoListScreenPreview() {
                 onTodoItemAdded = {},
                 onSummaryChanged = {_, _ -> },
                 onCompleted = {_, _ -> },
+                onMoveTodoItem = {_, _ -> },
                 onDelete = {},
                 onDeleteCompleted = {},
                 onNavigateBack = {},

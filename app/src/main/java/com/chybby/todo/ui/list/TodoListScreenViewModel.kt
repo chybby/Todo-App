@@ -42,6 +42,21 @@ class TodoListScreenViewModel @Inject constructor(
         todoListRepository.addTodoItem(_listId, afterPosition)
     }
 
+    fun moveTodoItem(from: Int, to: Int) = viewModelScope.launch {
+        val uncompletedItems = uiState.value.todoItems.filter { !it.isCompleted }
+
+        if (to >= uncompletedItems.size || from >= uncompletedItems.size) {
+            return@launch
+        }
+
+        var afterPosition = -1
+        if (to > 0) {
+            afterPosition = uncompletedItems[to - (if (from < to) 0 else 1)].position
+        }
+        val todoItemToMove = uncompletedItems[from]
+        todoListRepository.moveTodoItem(todoItemToMove.id, afterPosition)
+    }
+
     fun editSummary(id: Long, summary: String) = viewModelScope.launch {
         todoListRepository.editTodoItemSummary(id, summary)
     }

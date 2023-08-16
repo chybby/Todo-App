@@ -106,7 +106,7 @@ fun HomeScreen(
                         reorderableLazyListState = state,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(if (isDragging) 16.dp else 0.dp)
+                            .shadow(if (isDragging) 4.dp else 0.dp)
                     )
                 }
             }
