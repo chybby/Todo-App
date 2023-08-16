@@ -1,5 +1,9 @@
 package com.chybby.todo.ui.list
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -21,7 +25,27 @@ class TodoListArgs(val todoListId: Long) {
 fun NavGraphBuilder.todoListScreen(
     onNavigateBack: () -> Unit,
 ) {
-    composable("$TodoListRoute/{$todoListIdArg}") {
+    composable(
+        route = "$TodoListRoute/{$todoListIdArg}",
+        enterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Companion.Start,
+                animationSpec = tween(500)
+            )
+        },
+        popEnterTransition = {
+            EnterTransition.None
+        },
+        exitTransition = {
+            ExitTransition.None
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Companion.End,
+                animationSpec = tween(500)
+            )
+        }
+    ) {
         val viewModel: TodoListScreenViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         TodoListScreen(

@@ -1,5 +1,7 @@
 package com.chybby.todo.ui.home
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -13,7 +15,21 @@ const val HomeRoute = "home"
 fun NavGraphBuilder.homeScreen(
     onNavigateToTodoList: (todoListId: Long) -> Unit
 ) {
-    composable(HomeRoute) {
+    composable(
+        route = HomeRoute,
+        enterTransition = {
+            EnterTransition.None
+        },
+        popEnterTransition = {
+            EnterTransition.None
+        },
+        exitTransition = {
+            ExitTransition.None
+        },
+        popExitTransition = {
+            ExitTransition.None
+        }
+    ) {
         val viewModel: HomeScreenViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         HomeScreen(
