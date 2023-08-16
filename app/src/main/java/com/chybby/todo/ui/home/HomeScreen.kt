@@ -4,8 +4,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -40,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,7 +51,8 @@ import com.chybby.todo.data.TodoList
 import com.chybby.todo.ui.theme.TodoTheme
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.ReorderableLazyListState
+import org.burnoutcrew.reorderable.detectReorder
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 
@@ -92,7 +96,6 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(paddingSmall)
                 .reorderable(state)
-                .detectReorderAfterLongPress(state)
         ) {
             items(uiState.todoLists, key = { it.id } ) {todoList ->
                 ReorderableItem(reorderableState = state, key = todoList.id) {isDragging ->
@@ -100,6 +103,7 @@ fun HomeScreen(
                         todoList = todoList,
                         onClick = { onNavigateToTodoList(todoList.id) },
                         onDelete = { onDeleteTodoList(todoList.id) },
+                        reorderableLazyListState = state,
                         modifier = Modifier
                             .fillMaxWidth()
                             .shadow(if (isDragging) 16.dp else 0.dp)
@@ -136,7 +140,13 @@ fun ConfirmDeleteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, modifier: 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoList(todoList: TodoList, onClick: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+fun TodoList(
+    todoList: TodoList,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    reorderableLazyListState: ReorderableLazyListState,
+    modifier: Modifier = Modifier,
+) {
     val paddingSmall = dimensionResource(id = R.dimen.padding_small)
 
     var deleteDialogOpen by remember { mutableStateOf(false) }
@@ -222,12 +232,25 @@ fun TodoList(todoList: TodoList, onClick: () -> Unit, onDelete: () -> Unit, modi
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
-                Text(
-                    text = todoList.name,
-                    style = MaterialTheme.typography.headlineSmall,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
-                        .padding(paddingSmall)
-                )
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        text = todoList.name,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier
+                            .padding(paddingSmall)
+                    )
+                    Icon(
+                        painterResource(R.drawable.drag_indicator),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(paddingSmall)
+                            .detectReorder(reorderableLazyListState))
+                }
             }
         }
     )
