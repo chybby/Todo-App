@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -36,15 +38,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.chybby.todo.R
 import com.chybby.todo.data.TodoList
-import com.chybby.todo.ui.ReorderableLazyColumn
 import com.chybby.todo.ui.theme.TodoTheme
 import kotlinx.coroutines.launch
+import org.burnoutcrew.reorderable.ReorderableItem
+import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
+import org.burnoutcrew.reorderable.reorderable
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -73,23 +79,33 @@ fun HomeScreen(
         },
         modifier = modifier,
     ) { contentPadding ->
-        ReorderableLazyColumn(
-            items = uiState.todoLists,
-            key = { it.id },
+
+        val state = rememberReorderableLazyListState(onMove = { from, to ->
+            onMoveTodoList(from.index, to.index)
+        })
+
+        LazyColumn(
+            state = state.listState,
             contentPadding = contentPadding,
             verticalArrangement = spacedBy(paddingSmall),
-            onMove = onMoveTodoList,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingSmall)
-        ) {_, todoList ->
-            TodoList(
-                todoList = todoList,
-                onClick = { onNavigateToTodoList(todoList.id) },
-                onDelete = { onDeleteTodoList(todoList.id) },
-                modifier = Modifier
-                    .fillMaxWidth()
-            )
+                .reorderable(state)
+                .detectReorderAfterLongPress(state)
+        ) {
+            items(uiState.todoLists, key = { it.id } ) {todoList ->
+                ReorderableItem(reorderableState = state, key = todoList.id) {isDragging ->
+                    TodoList(
+                        todoList = todoList,
+                        onClick = { onNavigateToTodoList(todoList.id) },
+                        onDelete = { onDeleteTodoList(todoList.id) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(if (isDragging) 16.dp else 0.dp)
+                    )
+                }
+            }
         }
     }
 }
