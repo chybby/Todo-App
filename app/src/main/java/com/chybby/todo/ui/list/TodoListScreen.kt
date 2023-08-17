@@ -95,13 +95,18 @@ fun TodoListScreen(
 
     val smallPadding = dimensionResource(R.dimen.padding_small)
 
-    val state = rememberReorderableLazyListState(onMove = { from, to ->
-        onMoveTodoItem(from.index, to.index)
-    })
+    val todoItemsByCompleted = uiState.todoItems.groupBy { it.isCompleted }
+
+    val state = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            onMoveTodoItem(from.index, to.index)
+        },
+        canDragOver = { draggedOver, _ ->
+            draggedOver.index < (todoItemsByCompleted[false]?.size ?: 0)
+        }
+    )
 
     var indexToFocus by remember { mutableStateOf<Int?>(null) }
-
-    val todoItemsByCompleted = uiState.todoItems.groupBy { it.isCompleted }
 
     Scaffold (
         topBar = {
