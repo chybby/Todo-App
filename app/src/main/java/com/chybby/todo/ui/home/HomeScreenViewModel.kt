@@ -32,7 +32,7 @@ class HomeScreenViewModel @Inject constructor(
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            HomeScreenUiState(listOf(), null),
+            HomeScreenUiState(listOf(), null, true),
         )
 
     fun addTodoList() = viewModelScope.launch {
@@ -60,4 +60,5 @@ class HomeScreenViewModel @Inject constructor(
 data class HomeScreenUiState(
     val todoLists: List<TodoList>,
     val newTodoListId: Long?,
+    val loading: Boolean = false,
 )

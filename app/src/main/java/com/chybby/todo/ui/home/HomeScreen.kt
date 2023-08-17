@@ -36,7 +36,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -66,6 +68,10 @@ fun HomeScreen(
     onDeleteTodoList: (todoListId: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (uiState.loading) {
+        return
+    }
+
     val paddingSmall = dimensionResource(id = R.dimen.padding_small)
 
     LaunchedEffect(uiState.newTodoListId) {
@@ -74,6 +80,22 @@ fun HomeScreen(
             onNavigateToTodoList(uiState.newTodoListId)
         }
     }
+
+    // Store a mutable version of the list locally so it is updated quickly while dragging.
+    val todoLists by rememberUpdatedState(uiState.todoLists.toMutableStateList())
+
+    val state = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            // While dragging, update the list stored in the composition.
+            todoLists.apply {
+                add(to.index, removeAt(from.index))
+            }
+        },
+        onDragEnd = { from, to ->
+            // When drag ends, update the database.
+            onMoveTodoList(from, to)
+        }
+    )
 
     Scaffold(
         floatingActionButton = {
@@ -84,10 +106,6 @@ fun HomeScreen(
         modifier = modifier,
     ) { contentPadding ->
 
-        val state = rememberReorderableLazyListState(onMove = { from, to ->
-            onMoveTodoList(from.index, to.index)
-        })
-
         LazyColumn(
             state = state.listState,
             contentPadding = contentPadding,
@@ -97,7 +115,7 @@ fun HomeScreen(
                 .padding(paddingSmall)
                 .reorderable(state)
         ) {
-            items(uiState.todoLists, key = { it.id } ) {todoList ->
+            items(todoLists, key = { it.id } ) {todoList ->
                 ReorderableItem(reorderableState = state, key = todoList.id) {isDragging ->
                     TodoList(
                         todoList = todoList,

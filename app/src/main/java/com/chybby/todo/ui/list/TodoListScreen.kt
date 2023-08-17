@@ -39,8 +39,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -88,25 +90,35 @@ fun TodoListScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-
     if (uiState.loading) {
         return
     }
 
     val smallPadding = dimensionResource(R.dimen.padding_small)
 
-    val todoItemsByCompleted = uiState.todoItems.groupBy { it.isCompleted }
+    // Store a mutable version of the list locally so it is updated quickly while dragging.
+    val uncompletedTodoItems by rememberUpdatedState(uiState.todoItems.filter { !it.isCompleted }.toMutableStateList())
 
     val state = rememberReorderableLazyListState(
         onMove = { from, to ->
-            onMoveTodoItem(from.index, to.index)
+            // While dragging, update the list stored in the composition.
+            uncompletedTodoItems.apply {
+                add(to.index, removeAt(from.index))
+            }
         },
+        onDragEnd = { from, to ->
+            // When drag ends, update the database.
+            onMoveTodoItem(from, to)
+        },
+        // Only allow drag over other uncompleted items.
         canDragOver = { draggedOver, _ ->
-            draggedOver.index < (todoItemsByCompleted[false]?.size ?: 0)
+            draggedOver.index < uncompletedTodoItems.size
         }
     )
 
     var indexToFocus by remember { mutableStateOf<Int?>(null) }
+
+    var completedItemsShown by rememberSaveable { mutableStateOf(false) }
 
     Scaffold (
         topBar = {
@@ -118,8 +130,6 @@ fun TodoListScreen(
         },
         modifier = modifier
     ) { contentPadding ->
-        var completedItemsShown by rememberSaveable { mutableStateOf(false) }
-
         LazyColumn(
             state = state.listState,
             contentPadding = contentPadding,
@@ -129,8 +139,7 @@ fun TodoListScreen(
         ) {
 
             // Uncompleted items.
-            val uncompletedItems = todoItemsByCompleted.getOrDefault(false, listOf())
-            itemsIndexed(uncompletedItems, key = { _, item -> item.id }) {index, todoItem ->
+            itemsIndexed(uncompletedTodoItems, key = { _, item -> item.id }) {index, todoItem ->
 
                 val focusRequester = remember { FocusRequester() }
 
@@ -168,7 +177,7 @@ fun TodoListScreen(
             item {
                 TextButton(
                     onClick = {
-                        indexToFocus = uncompletedItems.size
+                        indexToFocus = uncompletedTodoItems.size
                         onTodoItemAdded(null)
                     }
                 ) {
@@ -213,7 +222,7 @@ fun TodoListScreen(
 
             if (completedItemsShown) {
                 items(
-                    todoItemsByCompleted.getOrDefault(true, listOf()),
+                    uiState.todoItems.filter { it.isCompleted },
                     key = { it.id }) { todoItem ->
                     TodoItem(
                         todoItem = todoItem,
