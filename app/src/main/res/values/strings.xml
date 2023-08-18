@@ -13,4 +13,7 @@
     <string name="hide_completed_items">Hide completed items</string>
     <string name="show_completed_items">Show completed items</string>
     <string name="delete_all_completed_items">Delete all completed items</string>
+    <string name="time">time</string>
+    <string name="date">date</string>
+    <string name="edit_reminder">Edit reminder</string>
 </resources>

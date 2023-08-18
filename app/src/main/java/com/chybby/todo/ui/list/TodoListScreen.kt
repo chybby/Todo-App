@@ -1,11 +1,16 @@
 package com.chybby.todo.ui.list
 
 import android.content.res.Configuration
+import android.text.format.DateFormat
+import android.util.Log
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,10 +22,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DismissDirection
 import androidx.compose.material3.DismissValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,10 +42,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismiss
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberDismissState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +68,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -63,6 +78,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.chybby.todo.R
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
@@ -74,6 +90,8 @@ import org.burnoutcrew.reorderable.ReorderableLazyListState
 import org.burnoutcrew.reorderable.detectReorder
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
+import java.util.Calendar
+import java.util.Date
 
 const val TYPING_PERSIST_DELAY_MS: Long = 300
 
@@ -87,6 +105,7 @@ fun TodoListScreen(
     onMoveTodoItem: (Int, Int) -> Unit,
     onDelete: (Long) -> Unit,
     onDeleteCompleted: () -> Unit,
+    onOpenReminderMenu: (Boolean) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -125,6 +144,7 @@ fun TodoListScreen(
             TodoListScreenTopBar(
                 name = uiState.todoList.name,
                 onNameChanged = onNameChanged,
+                onOpenReminderMenu = onOpenReminderMenu,
                 onNavigateBack = onNavigateBack,
             )
         },
@@ -243,6 +263,15 @@ fun TodoListScreen(
             }
         }
     }
+
+    if (uiState.reminderMenuOpen) {
+        ReminderDialog(
+            onConfirm = { time ->
+                Log.d("TodoListScreen", "Reminder time chosen: ${Date(time)}")
+                onOpenReminderMenu(false)
+            },
+            onDismiss = { onOpenReminderMenu(false) })
+    }
 }
 
 @Composable
@@ -307,6 +336,7 @@ fun TodoTextField(
 fun TodoListScreenTopBar(
     name: String,
     onNameChanged: (String) -> Unit,
+    onOpenReminderMenu: (Boolean) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier) {
 
@@ -327,8 +357,14 @@ fun TodoListScreenTopBar(
             }
         },
         actions = {
-            // TODO: notifications.
-            // Icon(Icons.Default.Notifications, contentDescription = stringResource(R.string.add_reminder))
+            IconButton(onClick = { onOpenReminderMenu(true) }) {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = stringResource(R.string.add_reminder),
+                    modifier = Modifier
+                        .padding(dimensionResource(R.dimen.padding_small))
+                )
+            }
         },
         modifier = modifier,
     )
@@ -402,6 +438,150 @@ fun TodoItem(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReminderDialog(onConfirm: (Long) -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    
+    val context = LocalContext.current
+
+    val smallPadding = dimensionResource(R.dimen.padding_small)
+    val mediumPadding = dimensionResource(R.dimen.padding_medium)
+
+    var isDatePickerOpen by remember { mutableStateOf(false) }
+    var isTimePickerOpen by remember { mutableStateOf(false) }
+
+    // TODO: set defaults based on existing reminder.
+    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = null)
+    val timePickerState = rememberTimePickerState(initialHour = 0, initialMinute = 0)
+
+    val formattedTime by remember { derivedStateOf {
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+        calendar.set(Calendar.MINUTE, timePickerState.minute)
+        DateFormat.getTimeFormat(context).format(calendar.time)
+    } }
+
+    val formattedDate by remember { derivedStateOf {
+        datePickerState.selectedDateMillis?.let { DateFormat.getLongDateFormat(context).format(Date(it)) }
+    } }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 8.dp,
+        ) {
+            Column(modifier = Modifier.padding(mediumPadding)) {
+                Text(
+                    stringResource(R.string.edit_reminder),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(smallPadding)
+                )
+
+                TextButton(
+                    onClick = { isTimePickerOpen = true }
+                ) {
+                    Icon(
+                        painterResource(R.drawable.time),
+                        contentDescription = stringResource(R.string.time)
+                    )
+                    Spacer(Modifier.width(smallPadding))
+                    Text(text = formattedTime, style = MaterialTheme.typography.bodyMedium)
+                }
+                TextButton(
+                    onClick = { isDatePickerOpen = true }
+                ) {
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = stringResource(R.string.date)
+                    )
+                    Spacer(Modifier.width(smallPadding))
+                    // TODO: default to today?
+                    Text(
+                        text = formattedDate ?: "Pick a date",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Spacer(Modifier.height(smallPadding))
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = {
+                            val calendar = Calendar.getInstance()
+                            calendar.timeInMillis = datePickerState.selectedDateMillis!!
+                            calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                            calendar.set(Calendar.MINUTE, timePickerState.minute)
+                            onConfirm(calendar.timeInMillis)
+                        },
+                        // TODO: check if time is in the past.
+                        enabled = datePickerState.selectedDateMillis != null
+                    ) {
+                        Text("Save")
+                    }
+                }
+            }
+        }
+    }
+
+    if (isDatePickerOpen) {
+        DatePickerDialog(
+            onDismissRequest = { isDatePickerOpen = false },
+            confirmButton = {
+                Button(onClick = { isDatePickerOpen = false }) {
+                    Text("Done")
+                }
+            },
+        ) {
+            DatePicker(datePickerState)
+        }
+    }
+
+    if (isTimePickerOpen) {
+        TimePickerDialog(
+            onDismissRequest = { isTimePickerOpen = false },
+            confirmButton = {
+                Button(onClick = { isTimePickerOpen = false },
+                ) {
+                    Text("Done")
+                }
+            }
+        ) {
+            TimePicker(timePickerState)
+        }
+    }
+}
+
+@Composable
+fun TimePickerDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable() (ColumnScope.() -> Unit)
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 8.dp,
+        ) {
+            Column(modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))) {
+                content()
+
+                Box(Modifier.align(Alignment.End)) {
+                    confirmButton()
+                }
+            }
+        }
+    }
+}
+
 @Preview(device = "id:Nexus 5", showSystemUi = true)
 @Preview(device = "id:Nexus 5", showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
@@ -456,7 +636,24 @@ fun TodoListScreenPreview() {
                 onMoveTodoItem = {_, _ -> },
                 onDelete = {},
                 onDeleteCompleted = {},
+                onOpenReminderMenu = {},
                 onNavigateBack = {},
+            )
+        }
+    }
+}
+
+@Preview(device = "id:Nexus 5", showSystemUi = true)
+@Composable
+fun ReminderDialogPreview() {
+    TodoTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            ReminderDialog(
+                onConfirm = {},
+                onDismiss = {}
             )
         }
     }

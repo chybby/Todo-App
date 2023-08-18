@@ -1,5 +1,9 @@
 package com.chybby.todo.ui.list
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -22,16 +26,29 @@ class TodoListScreenViewModel @Inject constructor(
     private val _todoListArgs = TodoListArgs(savedStateHandle)
     private val _listId = _todoListArgs.todoListId
 
+    private var _reminderMenuOpen: Boolean by mutableStateOf(false)
+
     val uiState: StateFlow<TodoListScreenUiState> = combine(
+        snapshotFlow { _reminderMenuOpen },
         todoListRepository.getTodoListStreamById(_listId),
         todoListRepository.getTodoItemsStreamByListId(_listId),
-    ) { todoList, todoItems ->
-        TodoListScreenUiState(todoList, todoItems)
+    ) { reminderMenuOpen, todoList, todoItems ->
+        TodoListScreenUiState(
+            todoList = todoList,
+            todoItems = todoItems,
+            reminderMenuOpen = reminderMenuOpen,
+            loading = false
+        )
     }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            TodoListScreenUiState(TodoList(), listOf(), true),
+            TodoListScreenUiState(
+                todoList = TodoList(),
+                todoItems = listOf(),
+                reminderMenuOpen = false,
+                loading = true
+            ),
         )
 
     fun editName(name: String) = viewModelScope.launch {
@@ -57,6 +74,10 @@ class TodoListScreenViewModel @Inject constructor(
         todoListRepository.moveTodoItem(todoItemToMove.id, afterPosition)
     }
 
+    fun openReminderMenu(open: Boolean) {
+        _reminderMenuOpen = open
+    }
+
     fun editSummary(id: Long, summary: String) = viewModelScope.launch {
         todoListRepository.editTodoItemSummary(id, summary)
     }
@@ -77,5 +98,6 @@ class TodoListScreenViewModel @Inject constructor(
 data class TodoListScreenUiState(
     val todoList: TodoList,
     val todoItems: List<TodoItem>,
+    val reminderMenuOpen: Boolean = false,
     val loading: Boolean = false,
 )
