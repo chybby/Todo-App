@@ -13,6 +13,7 @@ fun TodoList.toLocal() = TodoListEntity(
     id = id,
     name = name,
     position = position,
+    reminderDateTime = reminderDateTime,
 )
 
 @JvmName("todoListExternalToLocal")
@@ -44,6 +45,7 @@ fun List<TodoItemEntity>.toExternal() = map(TodoItemEntity::toExternal)
 fun TodoListEntity.toExternal() = TodoList(
     name = name,
     position = position,
+    reminderDateTime = reminderDateTime,
     id = id,
 )
 

@@ -1,8 +1,6 @@
 package com.chybby.todo.ui.list
 
 import android.content.res.Configuration
-import android.text.format.DateFormat
-import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -68,7 +66,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -90,8 +87,13 @@ import org.burnoutcrew.reorderable.ReorderableLazyListState
 import org.burnoutcrew.reorderable.detectReorder
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
-import java.util.Calendar
-import java.util.Date
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 const val TYPING_PERSIST_DELAY_MS: Long = 300
 
@@ -106,6 +108,7 @@ fun TodoListScreen(
     onDelete: (Long) -> Unit,
     onDeleteCompleted: () -> Unit,
     onOpenReminderMenu: (Boolean) -> Unit,
+    onReminderUpdated: (LocalDateTime?) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -266,8 +269,13 @@ fun TodoListScreen(
 
     if (uiState.reminderMenuOpen) {
         ReminderDialog(
-            onConfirm = { time ->
-                Log.d("TodoListScreen", "Reminder time chosen: ${Date(time)}")
+            todoList = uiState.todoList,
+            onConfirm = { dateTime ->
+                onReminderUpdated(dateTime)
+                onOpenReminderMenu(false)
+            },
+            onDelete = {
+                onReminderUpdated(null)
                 onOpenReminderMenu(false)
             },
             onDismiss = { onOpenReminderMenu(false) })
@@ -359,6 +367,7 @@ fun TodoListScreenTopBar(
         actions = {
             IconButton(onClick = { onOpenReminderMenu(true) }) {
                 Icon(
+                    // TODO: change icon depending on whether there is an existing reminder.
                     Icons.Default.Notifications,
                     contentDescription = stringResource(R.string.add_reminder),
                     modifier = Modifier
@@ -438,32 +447,69 @@ fun TodoItem(
     )
 }
 
+fun dateAndTimeToDateTime(date: Long, hour: Int, minute: Int): LocalDateTime {
+    val localDate = LocalDate.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC)
+    val localTime = LocalTime.of(hour, minute)
+    return LocalDateTime.of(localDate, localTime)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReminderDialog(onConfirm: (Long) -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    
-    val context = LocalContext.current
-
+fun ReminderDialog(
+    todoList: TodoList,
+    onConfirm: (LocalDateTime) -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val smallPadding = dimensionResource(R.dimen.padding_small)
     val mediumPadding = dimensionResource(R.dimen.padding_medium)
 
     var isDatePickerOpen by remember { mutableStateOf(false) }
     var isTimePickerOpen by remember { mutableStateOf(false) }
 
-    // TODO: set defaults based on existing reminder.
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = null)
-    val timePickerState = rememberTimePickerState(initialHour = 0, initialMinute = 0)
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis =
+            todoList.reminderDateTime?.toEpochSecond(ZoneOffset.UTC)?.times(1000) ?:
+                Instant.now().toEpochMilli()
+    )
+
+    // TODO: setting the time to 11:XX PM or 12:XX PM is buggy.
+    // 11:XX PM -> 12:XX PM
+    // 12:XX PM -> 12:XX AM
+    val timePickerState = rememberTimePickerState(
+        initialHour = todoList.reminderDateTime?.hour ?: 18,
+        initialMinute = todoList.reminderDateTime?.minute ?: 0
+    )
+
+    val reminderDateTime by remember { derivedStateOf {
+        datePickerState.selectedDateMillis?.let {
+            dateAndTimeToDateTime(it, timePickerState.hour, timePickerState.minute)
+        }
+    } }
 
     val formattedTime by remember { derivedStateOf {
-        val calendar = Calendar.getInstance()
-        calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
-        calendar.set(Calendar.MINUTE, timePickerState.minute)
-        DateFormat.getTimeFormat(context).format(calendar.time)
+        val time = LocalTime.of(timePickerState.hour, timePickerState.minute)
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(time)
     } }
 
     val formattedDate by remember { derivedStateOf {
-        datePickerState.selectedDateMillis?.let { DateFormat.getLongDateFormat(context).format(Date(it)) }
+        val date = datePickerState.selectedDateMillis?.let {
+            LocalDate.ofInstant(Instant.ofEpochMilli(it), ZoneOffset.UTC)
+        }
+        date?.let { DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).format(it) }
     } }
+
+    // Represent the local time as a UTC timestamp.
+    var currentDateTime by remember { mutableStateOf(LocalDateTime.now()) }
+
+    // Recompose when the current time changes.
+    LaunchedEffect(Unit) {
+        while(true) {
+            delay(1000)
+            currentDateTime = LocalDateTime.now()
+        }
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -472,7 +518,8 @@ fun ReminderDialog(onConfirm: (Long) -> Unit, onDismiss: () -> Unit, modifier: M
         ) {
             Column(modifier = Modifier.padding(mediumPadding)) {
                 Text(
-                    stringResource(R.string.edit_reminder),
+                    if (todoList.reminderDateTime == null) stringResource(R.string.add_reminder)
+                        else stringResource(R.string.edit_reminder),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(smallPadding)
                 )
@@ -495,9 +542,8 @@ fun ReminderDialog(onConfirm: (Long) -> Unit, onDismiss: () -> Unit, modifier: M
                         contentDescription = stringResource(R.string.date)
                     )
                     Spacer(Modifier.width(smallPadding))
-                    // TODO: default to today?
                     Text(
-                        text = formattedDate ?: "Pick a date",
+                        text = formattedDate ?: stringResource(R.string.choose_a_date),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -508,21 +554,22 @@ fun ReminderDialog(onConfirm: (Long) -> Unit, onDismiss: () -> Unit, modifier: M
                     modifier = Modifier
                         .align(Alignment.End)
                 ) {
+                    if (todoList.reminderDateTime != null) {
+                        TextButton(onClick = onDelete) {
+                            Text(stringResource(R.string.delete))
+                        }
+                    }
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                     Button(
                         onClick = {
-                            val calendar = Calendar.getInstance()
-                            calendar.timeInMillis = datePickerState.selectedDateMillis!!
-                            calendar.set(Calendar.HOUR_OF_DAY, timePickerState.hour)
-                            calendar.set(Calendar.MINUTE, timePickerState.minute)
-                            onConfirm(calendar.timeInMillis)
+                            onConfirm(reminderDateTime!!)
                         },
-                        // TODO: check if time is in the past.
-                        enabled = datePickerState.selectedDateMillis != null
+                        // Check if time is in the past.
+                        enabled = reminderDateTime != null && reminderDateTime!! > currentDateTime
                     ) {
-                        Text("Save")
+                        Text(stringResource(R.string.save))
                     }
                 }
             }
@@ -534,7 +581,7 @@ fun ReminderDialog(onConfirm: (Long) -> Unit, onDismiss: () -> Unit, modifier: M
             onDismissRequest = { isDatePickerOpen = false },
             confirmButton = {
                 Button(onClick = { isDatePickerOpen = false }) {
-                    Text("Done")
+                    Text(stringResource(R.string.done))
                 }
             },
         ) {
@@ -548,7 +595,7 @@ fun ReminderDialog(onConfirm: (Long) -> Unit, onDismiss: () -> Unit, modifier: M
             confirmButton = {
                 Button(onClick = { isTimePickerOpen = false },
                 ) {
-                    Text("Done")
+                    Text(stringResource(R.string.done))
                 }
             }
         ) {
@@ -562,7 +609,7 @@ fun TimePickerDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable() (ColumnScope.() -> Unit)
+    content: @Composable (ColumnScope.() -> Unit)
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -595,7 +642,7 @@ fun TodoListScreenPreview() {
         ) {
             TodoListScreen(
                 uiState = TodoListScreenUiState(
-                    todoList = TodoList(name = "Shopping", position = 0),
+                    todoList = TodoList(name = "Shopping", position = 0, reminderDateTime = null),
                     todoItems = listOf(
                         TodoItem(
                             id = 0,
@@ -637,6 +684,7 @@ fun TodoListScreenPreview() {
                 onDelete = {},
                 onDeleteCompleted = {},
                 onOpenReminderMenu = {},
+                onReminderUpdated = {},
                 onNavigateBack = {},
             )
         }
@@ -652,8 +700,10 @@ fun ReminderDialogPreview() {
             color = MaterialTheme.colorScheme.background
         ) {
             ReminderDialog(
+                todoList = TodoList(name = "Shopping", position = 0, reminderDateTime = null),
                 onConfirm = {},
-                onDismiss = {}
+                onDelete = {},
+                onDismiss = {},
             )
         }
     }

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDateTime
 
 @Dao
 interface TodoListDao {
@@ -73,6 +74,9 @@ interface TodoListDao {
         prepareForTodoListInsertion(position)
         updateTodoListPosition(id, position)
     }
+
+    @Query("UPDATE todo_list SET reminder_date_time = :dateTime WHERE id = :id")
+    suspend fun updateTodoListReminder(id: Long, dateTime: LocalDateTime?)
 
     @Query("UPDATE todo_item SET summary = :summary WHERE id = :id")
     suspend fun updateTodoItemSummary(id: Long, summary: String)

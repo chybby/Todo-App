@@ -9,11 +9,15 @@
     <string name="are_you_sure_you_want_to_delete_this_list">Are you sure you want to delete this list?</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
-    <string name="delete_item">Delete item</string>
     <string name="hide_completed_items">Hide completed items</string>
     <string name="show_completed_items">Show completed items</string>
     <string name="delete_all_completed_items">Delete all completed items</string>
     <string name="time">time</string>
     <string name="date">date</string>
     <string name="edit_reminder">Edit reminder</string>
+    <string name="choose_a_date">Choose a date</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="done">Done</string>
 </resources>

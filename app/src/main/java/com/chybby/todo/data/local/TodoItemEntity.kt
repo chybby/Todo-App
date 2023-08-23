@@ -24,6 +24,6 @@ data class TodoItemEntity(
     // TODO: index
     @ColumnInfo(name = "list_id")
     val listId: Long,
-    // The position of the item in the containing list.
+    // Where this TodoItem is positioned relative to other TodoItems in the same TodoList.
     val position: Int,
 )

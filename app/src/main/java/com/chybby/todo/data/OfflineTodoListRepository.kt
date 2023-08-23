@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 class OfflineTodoListRepository @Inject constructor(
@@ -37,7 +38,7 @@ class OfflineTodoListRepository @Inject constructor(
     // TodoList.
 
     override suspend fun addTodoList(): Long {
-        return todoListDao.insertTodoListLast(TodoListEntity(name = "", position = 0))
+        return todoListDao.insertTodoListLast(TodoListEntity(name = "", position = 0, reminderDateTime = null))
     }
 
     override suspend fun moveTodoList(id: Long, afterPosition: Int) = todoListDao.moveTodoList(id, afterPosition + 1)
@@ -47,6 +48,8 @@ class OfflineTodoListRepository @Inject constructor(
     override suspend fun deleteTodoList(id: Long) = todoListDao.deleteTodoList(id)
 
     override suspend fun deleteCompleted(id: Long) = todoListDao.deleteCompleted(id)
+
+    override suspend fun editTodoListReminder(id: Long, dateTime: LocalDateTime?) = todoListDao.updateTodoListReminder(id, dateTime)
 
     // TodoItem.
 

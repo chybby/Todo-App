@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 @HiltViewModel
@@ -76,6 +77,10 @@ class TodoListScreenViewModel @Inject constructor(
 
     fun openReminderMenu(open: Boolean) {
         _reminderMenuOpen = open
+    }
+
+    fun editReminder(dateTime: LocalDateTime?) = viewModelScope.launch {
+        todoListRepository.editTodoListReminder(_listId, dateTime)
     }
 
     fun editSummary(id: Long, summary: String) = viewModelScope.launch {
