@@ -113,8 +113,8 @@ fun HomeScreen(
                 .padding(paddingSmall)
                 .reorderable(state)
         ) {
-            items(todoLists, key = { it.id } ) {todoList ->
-                ReorderableItem(reorderableState = state, key = todoList.id) {isDragging ->
+            items(todoLists, key = { it.id }) { todoList ->
+                ReorderableItem(reorderableState = state, key = todoList.id) { isDragging ->
                     TodoList(
                         todoList = todoList,
                         onClick = { onNavigateToTodoList(todoList.id) },
@@ -131,7 +131,11 @@ fun HomeScreen(
 }
 
 @Composable
-fun ConfirmDeleteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun ConfirmDeleteDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -265,7 +269,8 @@ fun TodoList(
                         contentDescription = null,
                         modifier = Modifier
                             .padding(paddingSmall)
-                            .detectReorder(reorderableLazyListState))
+                            .detectReorder(reorderableLazyListState)
+                    )
                 }
             }
         }
@@ -290,7 +295,7 @@ fun HomeScreenPreview() {
                     newTodoListId = null,
                 ),
                 onAddTodoList = {},
-                onMoveTodoList = {_, _ -> },
+                onMoveTodoList = { _, _ -> },
                 onNavigateToTodoList = {},
                 onDeleteTodoList = {},
             )

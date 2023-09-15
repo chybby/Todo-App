@@ -17,12 +17,12 @@ abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindTodoListRepository(
-        offlineTodoListRepository: OfflineTodoListRepository
+        offlineTodoListRepository: OfflineTodoListRepository,
     ): TodoListRepository
 
     @Binds
     @Singleton
     abstract fun bindReminderRepository(
-        defaultReminderRepository: DefaultReminderRepository
+        defaultReminderRepository: DefaultReminderRepository,
     ): ReminderRepository
 }

@@ -20,8 +20,12 @@ class Converters {
     }
 }
 
-@Database(entities = [TodoItemEntity::class, TodoListEntity::class], version = 3, exportSchema = false)
+@Database(
+    entities = [TodoItemEntity::class, TodoListEntity::class],
+    version = 3,
+    exportSchema = false
+)
 @TypeConverters(Converters::class)
-abstract class TodoDatabase: RoomDatabase() {
+abstract class TodoDatabase : RoomDatabase() {
     abstract fun todoListDao(): TodoListDao
 }

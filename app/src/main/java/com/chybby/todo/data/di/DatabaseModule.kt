@@ -17,7 +17,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideTodoDatabase(
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
     ) = Room.databaseBuilder(
         context,
         TodoDatabase::class.java,

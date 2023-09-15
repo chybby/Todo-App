@@ -12,9 +12,10 @@ import javax.inject.Inject
 
 
 @HiltAndroidApp
-class TodoApplication: Application(), Configuration.Provider {
+class TodoApplication : Application(), Configuration.Provider {
 
-    @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
 
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

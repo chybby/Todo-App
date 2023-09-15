@@ -18,8 +18,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeScreenViewModel @Inject constructor(
-    private val todoListRepository: TodoListRepository
-): ViewModel() {
+    private val todoListRepository: TodoListRepository,
+) : ViewModel() {
 
     private var _newTodoListId: Long? by mutableStateOf(null)
 

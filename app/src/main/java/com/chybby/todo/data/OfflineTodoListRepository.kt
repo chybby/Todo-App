@@ -16,42 +16,54 @@ class OfflineTodoListRepository @Inject constructor(
     private val todoListDao: TodoListDao,
     private val reminderRepository: ReminderRepository,
     @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
-): TodoListRepository {
+) : TodoListRepository {
 
     // Streams.
 
-    override val todoListsStream: Flow<List<TodoList>> = todoListDao.observeTodoLists().map {todoLists ->
-        // Use the dispatcher to map potentially many items.
-        withContext(dispatcher) {
-            todoLists.toExternal()
+    override val todoListsStream: Flow<List<TodoList>> =
+        todoListDao.observeTodoLists().map { todoLists ->
+            // Use the dispatcher to map potentially many items.
+            withContext(dispatcher) {
+                todoLists.toExternal()
+            }
         }
-    }
 
-    override suspend fun getTodoLists(): List<TodoList> = todoListDao.getTodoLists().map {todoLists ->
-        // Use the dispatcher to map potentially many items.
-        withContext(dispatcher) {
-            todoLists.toExternal()
+    override suspend fun getTodoLists(): List<TodoList> =
+        todoListDao.getTodoLists().map { todoLists ->
+            // Use the dispatcher to map potentially many items.
+            withContext(dispatcher) {
+                todoLists.toExternal()
+            }
         }
-    }
 
-    override fun getTodoListStreamById(id: Long): Flow<TodoList> = todoListDao.observeTodoListById(id).map { it.toExternal() }
+    override fun getTodoListStreamById(id: Long): Flow<TodoList> =
+        todoListDao.observeTodoListById(id).map { it.toExternal() }
 
-    override fun getTodoItemsStreamByListId(listId: Long): Flow<List<TodoItem>> = todoListDao.observeTodoItemsByListId(listId).map {todoItems ->
-        // Use the dispatcher to map potentially many items.
-        withContext(dispatcher) {
-            todoItems.toExternal()
+    override fun getTodoItemsStreamByListId(listId: Long): Flow<List<TodoItem>> =
+        todoListDao.observeTodoItemsByListId(listId).map { todoItems ->
+            // Use the dispatcher to map potentially many items.
+            withContext(dispatcher) {
+                todoItems.toExternal()
+            }
         }
-    }
 
     // TodoList.
 
     override suspend fun addTodoList(): Long {
-        return todoListDao.insertTodoListLast(TodoListEntity(name = "", position = 0, reminderDateTime = null))
+        return todoListDao.insertTodoListLast(
+            TodoListEntity(
+                name = "",
+                position = 0,
+                reminderDateTime = null
+            )
+        )
     }
 
-    override suspend fun moveTodoList(id: Long, afterPosition: Int) = todoListDao.moveTodoList(id, afterPosition + 1)
+    override suspend fun moveTodoList(id: Long, afterPosition: Int) =
+        todoListDao.moveTodoList(id, afterPosition + 1)
 
-    override suspend fun renameTodoList(id: Long, name: String) = todoListDao.updateTodoListName(id, name)
+    override suspend fun renameTodoList(id: Long, name: String) =
+        todoListDao.updateTodoListName(id, name)
 
     override suspend fun deleteTodoList(id: Long) {
         todoListDao.deleteTodoList(id)
@@ -98,11 +110,14 @@ class OfflineTodoListRepository @Inject constructor(
         }
     }
 
-    override suspend fun editTodoItemSummary(id: Long, summary: String) = todoListDao.updateTodoItemSummary(id, summary)
+    override suspend fun editTodoItemSummary(id: Long, summary: String) =
+        todoListDao.updateTodoItemSummary(id, summary)
 
-    override suspend fun completeTodoItem(id: Long, completed: Boolean) = todoListDao.updateTodoItemCompleted(id, completed)
+    override suspend fun completeTodoItem(id: Long, completed: Boolean) =
+        todoListDao.updateTodoItemCompleted(id, completed)
 
-    override suspend fun moveTodoItem(id: Long, afterPosition: Int) = todoListDao.moveTodoItem(id, afterPosition + 1)
+    override suspend fun moveTodoItem(id: Long, afterPosition: Int) =
+        todoListDao.moveTodoItem(id, afterPosition + 1)
 
     override suspend fun deleteTodoItem(id: Long) = todoListDao.deleteTodoItem(id)
 

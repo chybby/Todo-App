@@ -141,7 +141,8 @@ fun TodoListScreen(
     val smallPadding = dimensionResource(R.dimen.padding_small)
 
     // Store a mutable version of the list locally so it is updated quickly while dragging.
-    val uncompletedTodoItems by rememberUpdatedState(uiState.todoItems.filter { !it.isCompleted }.toMutableStateList())
+    val uncompletedTodoItems by rememberUpdatedState(uiState.todoItems.filter { !it.isCompleted }
+        .toMutableStateList())
 
     val state = rememberReorderableLazyListState(
         onMove = { from, to ->
@@ -181,13 +182,15 @@ fun TodoListScreen(
                 // Notification permission was just granted.
 
                 // Still need to check whether other permissions are granted.
-                if (requestNotificationAndAlarmPermissions(
+                val allPermissionsGranted = requestNotificationAndAlarmPermissions(
                     // We know the notification permission is granted already.
                     notificationPermissionState = null,
                     onOpenNotificationPermissionRationale = {},
                     alarmManager = alarmManager,
                     onOpenAlarmPermissionRationale = { alarmPermissionRationaleOpen = true }
-                )) {
+                )
+
+                if (allPermissionsGranted) {
                     onOpenReminderMenu(true)
                 }
             }
@@ -224,12 +227,18 @@ fun TodoListScreen(
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
                         alarmPermissionRationaleOpen = false
                         // Still need to check whether other permissions are granted.
-                        if (requestNotificationAndAlarmPermissions(
+                        val allPermissionsGranted = requestNotificationAndAlarmPermissions(
                             notificationPermissionState = notificationPermissionState,
-                            onOpenNotificationPermissionRationale = { notificationPermissionRationaleOpen = true },
+                            onOpenNotificationPermissionRationale = {
+                                notificationPermissionRationaleOpen = true
+                            },
                             alarmManager = alarmManager,
-                            onOpenAlarmPermissionRationale = { alarmPermissionRationaleOpen = true }
-                        )) {
+                            onOpenAlarmPermissionRationale = {
+                                alarmPermissionRationaleOpen = true
+                            }
+                        )
+
+                        if (allPermissionsGranted) {
                             onOpenReminderMenu(true)
                         }
                     }
@@ -243,7 +252,7 @@ fun TodoListScreen(
         }
     }
 
-    Scaffold (
+    Scaffold(
         topBar = {
             TodoListScreenTopBar(
                 name = uiState.todoList.name,
@@ -251,12 +260,18 @@ fun TodoListScreen(
                 hasReminder = uiState.todoList.reminderDateTime != null,
                 onOpenReminderMenu = { open ->
                     if (open) {
-                        if (!requestNotificationAndAlarmPermissions(
+                        val allPermissionsGranted = requestNotificationAndAlarmPermissions(
                             notificationPermissionState = notificationPermissionState,
-                            onOpenNotificationPermissionRationale = { notificationPermissionRationaleOpen = true },
+                            onOpenNotificationPermissionRationale = {
+                                notificationPermissionRationaleOpen = true
+                            },
                             alarmManager = alarmManager,
-                            onOpenAlarmPermissionRationale = { alarmPermissionRationaleOpen = true }
-                        )) {
+                            onOpenAlarmPermissionRationale = {
+                                alarmPermissionRationaleOpen = true
+                            }
+                        )
+
+                        if (!allPermissionsGranted) {
                             return@TodoListScreenTopBar
                         }
                     }
@@ -278,11 +293,11 @@ fun TodoListScreen(
         ) {
 
             // Uncompleted items.
-            itemsIndexed(uncompletedTodoItems, key = { _, item -> item.id }) {index, todoItem ->
+            itemsIndexed(uncompletedTodoItems, key = { _, item -> item.id }) { index, todoItem ->
 
                 val focusRequester = remember { FocusRequester() }
 
-                ReorderableItem(state, key = todoItem.id) {isDragging ->
+                ReorderableItem(state, key = todoItem.id) { isDragging ->
                     TodoItem(
                         todoItem = todoItem,
                         onCompleted = { onCompleted(todoItem.id, it) },
@@ -322,7 +337,10 @@ fun TodoListScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_item))
                     Spacer(Modifier.width(smallPadding))
-                    Text(text = stringResource(R.string.add_item), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = stringResource(R.string.add_item),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
 
@@ -335,14 +353,24 @@ fun TodoListScreen(
                     TextButton(
                         onClick = { completedItemsShown = !completedItemsShown }
                     ) {
-                        val icon = when(completedItemsShown) {
-                            true -> { Icons.Default.KeyboardArrowDown }
-                            false -> { Icons.Default.KeyboardArrowUp }
+                        val icon = when (completedItemsShown) {
+                            true -> {
+                                Icons.Default.KeyboardArrowDown
+                            }
+
+                            false -> {
+                                Icons.Default.KeyboardArrowUp
+                            }
                         }
 
-                        val contentDescription = when(completedItemsShown) {
-                            true -> { stringResource(R.string.hide_completed_items) }
-                            false -> { stringResource(R.string.show_completed_items) }
+                        val contentDescription = when (completedItemsShown) {
+                            true -> {
+                                stringResource(R.string.hide_completed_items)
+                            }
+
+                            false -> {
+                                stringResource(R.string.show_completed_items)
+                            }
                         }
 
                         Icon(icon, contentDescription)
@@ -356,7 +384,10 @@ fun TodoListScreen(
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
                     ) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.delete_all_completed_items))
+                        Icon(
+                            Icons.Default.Delete,
+                            stringResource(R.string.delete_all_completed_items)
+                        )
                     }
                 }
             }
@@ -503,7 +534,8 @@ fun TodoListScreenTopBar(
     hasReminder: Boolean,
     onOpenReminderMenu: (Boolean) -> Unit,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier) {
+    modifier: Modifier = Modifier,
+) {
 
     val titleFocusRequester = remember { FocusRequester() }
 
@@ -523,8 +555,13 @@ fun TodoListScreenTopBar(
         },
         actions = {
             IconButton(onClick = { onOpenReminderMenu(true) }) {
+                val reminderIcon = when (hasReminder) {
+                    true -> Icons.Filled.Notifications
+                    false -> Icons.Outlined.Notifications
+                }
+
                 Icon(
-                    if (hasReminder) { Icons.Filled.Notifications } else { Icons.Outlined.Notifications },
+                    reminderIcon,
                     contentDescription = stringResource(R.string.add_reminder),
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.padding_small))
@@ -577,7 +614,7 @@ fun TodoItem(
                 modifier = modifier
                     .alpha(if (dismissState.progress == 1f) 1f else 1f - dismissState.progress),
             ) {
-                Checkbox(checked = todoItem.isCompleted, onCheckedChange = onCompleted )
+                Checkbox(checked = todoItem.isCompleted, onCheckedChange = onCompleted)
                 TodoTextField(
                     value = todoItem.summary,
                     onValueChanged = onSummaryChanged,
@@ -604,7 +641,11 @@ fun TodoItem(
 }
 
 @Composable
-fun NotificationPermissionRationaleDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun NotificationPermissionRationaleDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -628,7 +669,11 @@ fun NotificationPermissionRationaleDialog(onConfirm: () -> Unit, onDismiss: () -
 }
 
 @Composable
-fun AlarmPermissionRationaleDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun AlarmPermissionRationaleDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -676,9 +721,9 @@ fun ReminderDialog(
 
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis =
-            todoList.reminderDateTime?.toEpochSecond(ZoneOffset.UTC)?.times(1000) ?:
-                // The instant representing the start of the local day in UTC.
-                LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+        todoList.reminderDateTime?.toEpochSecond(ZoneOffset.UTC)?.times(1000) ?:
+        // The instant representing the start of the local day in UTC.
+        LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
     )
 
     // TODO: setting the time to 11:XX PM or 12:XX PM is buggy. Should be fixed in material3 1.2.0
@@ -690,30 +735,36 @@ fun ReminderDialog(
     )
 
     //TODO: remove usage of derivedStateOf?
-    val reminderDateTime by remember { derivedStateOf {
-        datePickerState.selectedDateMillis?.let {
-            dateAndTimeToDateTime(it, timePickerState.hour, timePickerState.minute)
+    val reminderDateTime by remember {
+        derivedStateOf {
+            datePickerState.selectedDateMillis?.let {
+                dateAndTimeToDateTime(it, timePickerState.hour, timePickerState.minute)
+            }
         }
-    } }
+    }
 
-    val formattedTime by remember { derivedStateOf {
-        val time = LocalTime.of(timePickerState.hour, timePickerState.minute)
-        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(time)
-    } }
-
-    val formattedDate by remember { derivedStateOf {
-        val date = datePickerState.selectedDateMillis?.let {
-            LocalDate.ofInstant(Instant.ofEpochMilli(it), ZoneOffset.UTC)
+    val formattedTime by remember {
+        derivedStateOf {
+            val time = LocalTime.of(timePickerState.hour, timePickerState.minute)
+            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(time)
         }
-        date?.let { DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).format(it) }
-    } }
+    }
+
+    val formattedDate by remember {
+        derivedStateOf {
+            val date = datePickerState.selectedDateMillis?.let {
+                LocalDate.ofInstant(Instant.ofEpochMilli(it), ZoneOffset.UTC)
+            }
+            date?.let { DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).format(it) }
+        }
+    }
 
     // Represent the local time as a UTC timestamp.
     var currentDateTime by remember { mutableStateOf(LocalDateTime.now()) }
 
     // Recompose when the current time changes.
     LaunchedEffect(Unit) {
-        while(true) {
+        while (true) {
             delay(1000)
             currentDateTime = LocalDateTime.now()
         }
@@ -725,9 +776,12 @@ fun ReminderDialog(
             tonalElevation = 8.dp,
         ) {
             Column(modifier = Modifier.padding(mediumPadding)) {
+                val title = when (todoList.reminderDateTime) {
+                    null -> stringResource(R.string.add_reminder)
+                    else -> stringResource(R.string.edit_reminder)
+                }
                 Text(
-                    if (todoList.reminderDateTime == null) stringResource(R.string.add_reminder)
-                        else stringResource(R.string.edit_reminder),
+                    text = title,
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(smallPadding)
                 )
@@ -801,7 +855,8 @@ fun ReminderDialog(
         TimePickerDialog(
             onDismissRequest = { isTimePickerOpen = false },
             confirmButton = {
-                Button(onClick = { isTimePickerOpen = false },
+                Button(
+                    onClick = { isTimePickerOpen = false },
                 ) {
                     Text(stringResource(R.string.done))
                 }
@@ -817,7 +872,7 @@ fun TimePickerDialog(
     onDismissRequest: () -> Unit,
     confirmButton: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable (ColumnScope.() -> Unit)
+    content: @Composable (ColumnScope.() -> Unit),
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -838,7 +893,8 @@ fun TimePickerDialog(
 }
 
 @Preview(device = "id:Nexus 5", showSystemUi = true)
-@Preview(device = "id:Nexus 5", showSystemUi = true,
+@Preview(
+    device = "id:Nexus 5", showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
 )
 @Composable
@@ -886,9 +942,9 @@ fun TodoListScreenPreview() {
                 ),
                 onNameChanged = {},
                 onTodoItemAdded = {},
-                onSummaryChanged = {_, _ -> },
-                onCompleted = {_, _ -> },
-                onMoveTodoItem = {_, _ -> },
+                onSummaryChanged = { _, _ -> },
+                onCompleted = { _, _ -> },
+                onMoveTodoItem = { _, _ -> },
                 onDelete = {},
                 onDeleteCompleted = {},
                 onOpenReminderMenu = {},

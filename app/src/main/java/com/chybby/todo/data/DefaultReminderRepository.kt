@@ -14,8 +14,8 @@ import java.time.ZoneId
 import javax.inject.Inject
 
 class DefaultReminderRepository @Inject constructor(
-    @ApplicationContext val context: Context
-): ReminderRepository {
+    @ApplicationContext val context: Context,
+) : ReminderRepository {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
 

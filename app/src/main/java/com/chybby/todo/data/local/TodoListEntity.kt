@@ -15,7 +15,7 @@ data class TodoListEntity(
 
     // A date and time with no associated timezone.
     @ColumnInfo(name = "reminder_date_time")
-    val reminderDateTime: LocalDateTime?
+    val reminderDateTime: LocalDateTime?,
 
     // TODO: remind based on location.
 )

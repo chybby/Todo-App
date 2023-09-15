@@ -13,7 +13,7 @@ import timber.log.Timber
 class ScheduleAlarmsWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
-    private val todoListRepository: TodoListRepository
+    private val todoListRepository: TodoListRepository,
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {

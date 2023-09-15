@@ -25,7 +25,11 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, workerParams) {
 
     @SuppressLint("MissingPermission")
-    fun createNotifications(notificationManager: NotificationManagerCompat, todoList: TodoList, todoItems: List<TodoItem>) {
+    fun createNotifications(
+        notificationManager: NotificationManagerCompat,
+        todoList: TodoList,
+        todoItems: List<TodoItem>,
+    ) {
         //TODO: Create a notification group for each todo list.
         //TODO: Tapping the notification should open the app to the appropriate list.
         //TODO: Have a look at https://developer.android.com/develop/ui/views/notifications/custom-notification/.
@@ -42,10 +46,11 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
 //                    PendingIntent.getBroadcast(applicationContext, 0, doneIntent,
 //                        PendingIntent.FLAG_IMMUTABLE)
 
-            val builder = NotificationCompat.Builder(applicationContext, TodoApplication.REMINDER_CHANNEL_ID)
-                .setSmallIcon(R.drawable.notification_icon)
-                .setContentTitle(todoItem.summary)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            val builder =
+                NotificationCompat.Builder(applicationContext, TodoApplication.REMINDER_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.notification_icon)
+                    .setContentTitle(todoItem.summary)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             //.addAction(R.drawable.done, applicationContext.getString(R.string.done), donePendingIntent)
 
             notificationManager.notify(todoItem.id.toInt(), builder.build())
@@ -76,7 +81,8 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
             Timber.d("Sending notifications for list with id $listId")
 
             val todoList = todoListRepository.getTodoListStreamById(listId).first()
-            val todoItems = todoListRepository.getTodoItemsStreamByListId(listId).first().filter { !it.isCompleted }
+            val todoItems = todoListRepository.getTodoItemsStreamByListId(listId).first()
+                .filter { !it.isCompleted }
 
             createNotifications(notificationManager, todoList, todoItems)
 

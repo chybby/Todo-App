@@ -13,7 +13,7 @@ import androidx.navigation.compose.composable
 const val HomeRoute = "home"
 
 fun NavGraphBuilder.homeScreen(
-    onNavigateToTodoList: (todoListId: Long) -> Unit
+    onNavigateToTodoList: (todoListId: Long) -> Unit,
 ) {
     composable(
         route = HomeRoute,

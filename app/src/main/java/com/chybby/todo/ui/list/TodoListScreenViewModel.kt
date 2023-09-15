@@ -26,8 +26,8 @@ import javax.inject.Inject
 @HiltViewModel
 class TodoListScreenViewModel @Inject constructor(
     private val todoListRepository: TodoListRepository,
-    savedStateHandle: SavedStateHandle
-): ViewModel() {
+    savedStateHandle: SavedStateHandle,
+) : ViewModel() {
     private val _todoListArgs = TodoListArgs(savedStateHandle)
     private val _listId = _todoListArgs.todoListId
 
