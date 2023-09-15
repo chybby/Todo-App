@@ -1,5 +1,6 @@
 package com.chybby.todo.ui.list
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,6 +12,9 @@ import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.data.TodoListRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -36,7 +40,7 @@ class TodoListScreenViewModel @Inject constructor(
     ) { reminderMenuOpen, todoList, todoItems ->
         TodoListScreenUiState(
             todoList = todoList,
-            todoItems = todoItems,
+            todoItems = todoItems.toImmutableList(),
             reminderMenuOpen = reminderMenuOpen,
             loading = false
         )
@@ -46,7 +50,7 @@ class TodoListScreenViewModel @Inject constructor(
             SharingStarted.WhileSubscribed(5000),
             TodoListScreenUiState(
                 todoList = TodoList(),
-                todoItems = listOf(),
+                todoItems = persistentListOf(),
                 reminderMenuOpen = false,
                 loading = true
             ),
@@ -100,9 +104,10 @@ class TodoListScreenViewModel @Inject constructor(
     }
 }
 
+@Immutable
 data class TodoListScreenUiState(
     val todoList: TodoList,
-    val todoItems: List<TodoItem>,
+    val todoItems: ImmutableList<TodoItem>,
     val reminderMenuOpen: Boolean = false,
     val loading: Boolean = false,
 )

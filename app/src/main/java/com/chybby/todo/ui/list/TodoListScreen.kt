@@ -851,7 +851,7 @@ fun TodoListScreenPreview() {
             TodoListScreen(
                 uiState = TodoListScreenUiState(
                     todoList = TodoList(name = "Shopping", position = 0, reminderDateTime = null),
-                    todoItems = listOf(
+                    todoItems = persistentListOf(
                         TodoItem(
                             id = 0,
                             summary = "Eggs",

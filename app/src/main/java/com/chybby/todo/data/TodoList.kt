@@ -1,7 +1,9 @@
 package com.chybby.todo.data
 
+import androidx.compose.runtime.Immutable
 import java.time.LocalDateTime
 
+@Immutable
 data class TodoList(
     val name: String = "",
     // Where this TodoList is positioned relative to other TodoLists.
@@ -11,6 +13,7 @@ data class TodoList(
     val id: Long = 0,
 )
 
+@Immutable
 data class TodoItem(
     val summary: String = "",
     val isCompleted: Boolean = false,
