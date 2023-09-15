@@ -14,12 +14,20 @@ import javax.inject.Inject
 
 class OfflineTodoListRepository @Inject constructor(
     private val todoListDao: TodoListDao,
+    private val reminderRepository: ReminderRepository,
     @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
 ): TodoListRepository {
 
     // Streams.
 
     override val todoListsStream: Flow<List<TodoList>> = todoListDao.observeTodoLists().map {todoLists ->
+        // Use the dispatcher to map potentially many items.
+        withContext(dispatcher) {
+            todoLists.toExternal()
+        }
+    }
+
+    override suspend fun getTodoLists(): List<TodoList> = todoListDao.getTodoLists().map {todoLists ->
         // Use the dispatcher to map potentially many items.
         withContext(dispatcher) {
             todoLists.toExternal()
@@ -45,11 +53,33 @@ class OfflineTodoListRepository @Inject constructor(
 
     override suspend fun renameTodoList(id: Long, name: String) = todoListDao.updateTodoListName(id, name)
 
-    override suspend fun deleteTodoList(id: Long) = todoListDao.deleteTodoList(id)
+    override suspend fun deleteTodoList(id: Long) {
+        todoListDao.deleteTodoList(id)
+        reminderRepository.deleteReminder(id)
+    }
 
     override suspend fun deleteCompleted(id: Long) = todoListDao.deleteCompleted(id)
 
-    override suspend fun editTodoListReminder(id: Long, dateTime: LocalDateTime?) = todoListDao.updateTodoListReminder(id, dateTime)
+    override suspend fun editTodoListReminder(id: Long, dateTime: LocalDateTime?) {
+        todoListDao.updateTodoListReminder(id, dateTime)
+
+        if (dateTime != null) {
+            reminderRepository.createReminder(id, dateTime)
+        } else {
+            reminderRepository.deleteReminder(id)
+        }
+    }
+
+    override suspend fun scheduleExistingReminders() {
+        getTodoLists().map { todoList ->
+            if (todoList.reminderDateTime == null) {
+                return@map
+            }
+
+            // If the reminder is in the past, the alarm will be triggered immediately.
+            reminderRepository.createReminder(todoList.id, todoList.reminderDateTime)
+        }
+    }
 
     // TodoItem.
 

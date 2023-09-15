@@ -8,6 +8,8 @@ interface TodoListRepository {
 
     val todoListsStream: Flow<List<TodoList>>
 
+    suspend fun getTodoLists(): List<TodoList>
+
     fun getTodoListStreamById(id: Long): Flow<TodoList>
 
     fun getTodoItemsStreamByListId(listId: Long): Flow<List<TodoItem>>
@@ -25,6 +27,8 @@ interface TodoListRepository {
     suspend fun deleteCompleted(id: Long)
 
     suspend fun editTodoListReminder(id: Long, dateTime: LocalDateTime?)
+
+    suspend fun scheduleExistingReminders()
 
     // TodoItem.
 

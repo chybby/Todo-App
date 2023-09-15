@@ -10,10 +10,15 @@ import java.time.LocalDateTime
 @Dao
 interface TodoListDao {
 
+    //TODO: look into distinctUntilChanged.
+
     // Get
 
     @Query("SELECT * FROM todo_list ORDER BY position")
     fun observeTodoLists(): Flow<List<TodoListEntity>>
+
+    @Query("SELECT * FROM todo_list ORDER BY position")
+    suspend fun getTodoLists(): List<TodoListEntity>
 
     @Query("SELECT * FROM todo_list WHERE id = :id")
     fun observeTodoListById(id: Long): Flow<TodoListEntity>

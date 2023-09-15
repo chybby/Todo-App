@@ -1,6 +1,13 @@
 package com.chybby.todo.ui.list
 
+import android.app.AlarmManager
+import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -25,6 +32,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
@@ -46,6 +55,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberDismissState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -66,6 +76,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -76,17 +88,26 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.chybby.todo.R
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.ui.isItemWithIndexVisible
 import com.chybby.todo.ui.theme.TodoTheme
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionState
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.ReorderableLazyListState
 import org.burnoutcrew.reorderable.detectReorder
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
+import timber.log.Timber
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -97,6 +118,7 @@ import java.time.format.FormatStyle
 
 const val TYPING_PERSIST_DELAY_MS: Long = 300
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun TodoListScreen(
     uiState: TodoListScreenUiState,
@@ -142,12 +164,106 @@ fun TodoListScreen(
 
     var completedItemsShown by rememberSaveable { mutableStateOf(false) }
 
+    // Permissions
+    var notificationPermissionRationaleOpen by rememberSaveable { mutableStateOf(false) }
+    var alarmPermissionRationaleOpen by rememberSaveable { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val alarmManager = context.getSystemService(AlarmManager::class.java)
+
+    val notificationPermissionState = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        null
+    } else {
+        rememberPermissionState(
+            permission = android.Manifest.permission.POST_NOTIFICATIONS
+        ) { granted ->
+            if (granted) {
+                // Notification permission was just granted.
+
+                // Still need to check whether other permissions are granted.
+                if (requestNotificationAndAlarmPermissions(
+                    // We know the notification permission is granted already.
+                    notificationPermissionState = null,
+                    onOpenNotificationPermissionRationale = {},
+                    alarmManager = alarmManager,
+                    onOpenAlarmPermissionRationale = { alarmPermissionRationaleOpen = true }
+                )) {
+                    onOpenReminderMenu(true)
+                }
+            }
+        }
+    }
+
+    if (notificationPermissionRationaleOpen) {
+        NotificationPermissionRationaleDialog(
+            onConfirm = {
+                notificationPermissionRationaleOpen = false
+                notificationPermissionState?.launchPermissionRequest()
+            },
+            onDismiss = { notificationPermissionRationaleOpen = false },
+        )
+    }
+
+    if (alarmPermissionRationaleOpen) {
+        AlarmPermissionRationaleDialog(
+            onConfirm = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    requestAlarmPermissions(context)
+                }
+            },
+            onDismiss = { alarmPermissionRationaleOpen = false },
+        )
+    }
+
+    // When the app is resumed, check if the alarm permission was granted.
+    val lifecycle = LocalLifecycleOwner.current
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (alarmPermissionRationaleOpen) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && alarmManager.canScheduleExactAlarms()) {
+                        alarmPermissionRationaleOpen = false
+                        // Still need to check whether other permissions are granted.
+                        if (requestNotificationAndAlarmPermissions(
+                            notificationPermissionState = notificationPermissionState,
+                            onOpenNotificationPermissionRationale = { notificationPermissionRationaleOpen = true },
+                            alarmManager = alarmManager,
+                            onOpenAlarmPermissionRationale = { alarmPermissionRationaleOpen = true }
+                        )) {
+                            onOpenReminderMenu(true)
+                        }
+                    }
+                }
+            }
+        }
+        lifecycle.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycle.lifecycle.removeObserver(observer)
+        }
+    }
+
     Scaffold (
         topBar = {
             TodoListScreenTopBar(
                 name = uiState.todoList.name,
                 onNameChanged = onNameChanged,
-                onOpenReminderMenu = onOpenReminderMenu,
+                hasReminder = uiState.todoList.reminderDateTime != null,
+                onOpenReminderMenu = { open ->
+                    if (open) {
+                        if (!requestNotificationAndAlarmPermissions(
+                            notificationPermissionState = notificationPermissionState,
+                            onOpenNotificationPermissionRationale = { notificationPermissionRationaleOpen = true },
+                            alarmManager = alarmManager,
+                            onOpenAlarmPermissionRationale = { alarmPermissionRationaleOpen = true }
+                        )) {
+                            return@TodoListScreenTopBar
+                        }
+                    }
+
+                    // Permissions already granted.
+                    onOpenReminderMenu(open)
+                },
                 onNavigateBack = onNavigateBack,
             )
         },
@@ -234,6 +350,8 @@ fun TodoListScreen(
                         Text(text = "Completed items", style = MaterialTheme.typography.bodyMedium)
                     }
                     IconButton(
+                        //TODO: Investigate why surrounding this in a lambda reduces recompositions.
+                        // (also affects other functions.)
                         onClick = onDeleteCompleted,
                         modifier = Modifier
                             .align(Alignment.CenterEnd)
@@ -246,7 +364,8 @@ fun TodoListScreen(
             if (completedItemsShown) {
                 items(
                     uiState.todoItems.filter { it.isCompleted },
-                    key = { it.id }) { todoItem ->
+                    key = { it.id }
+                ) { todoItem ->
                     TodoItem(
                         todoItem = todoItem,
                         onCompleted = { onCompleted(todoItem.id, it) },
@@ -278,7 +397,44 @@ fun TodoListScreen(
                 onReminderUpdated(null)
                 onOpenReminderMenu(false)
             },
-            onDismiss = { onOpenReminderMenu(false) })
+            onDismiss = { onOpenReminderMenu(false) }
+        )
+    }
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+fun requestNotificationAndAlarmPermissions(
+    notificationPermissionState: PermissionState?,
+    onOpenNotificationPermissionRationale: () -> Unit,
+    alarmManager: AlarmManager,
+    onOpenAlarmPermissionRationale: () -> Unit,
+): Boolean {
+    if (notificationPermissionState?.status?.isGranted == false) {
+        // Notification permission isn't granted, go through permission grant flow.
+        if (notificationPermissionState.status.shouldShowRationale) {
+            onOpenNotificationPermissionRationale()
+        } else {
+            notificationPermissionState.launchPermissionRequest()
+        }
+        return false
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+        // Alarm permission isn't granted, go through permission grant flow.
+        onOpenAlarmPermissionRationale()
+        return false
+    }
+
+    return true
+}
+
+@RequiresApi(Build.VERSION_CODES.S)
+fun requestAlarmPermissions(context: Context) {
+    Timber.d("Requesting SCHEDULE_EXACT_ALARM permission")
+    Intent().also { intent ->
+        intent.action = Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+        intent.data = Uri.parse("package:" + context.packageName)
+        context.startActivity(intent)
     }
 }
 
@@ -344,6 +500,7 @@ fun TodoTextField(
 fun TodoListScreenTopBar(
     name: String,
     onNameChanged: (String) -> Unit,
+    hasReminder: Boolean,
     onOpenReminderMenu: (Boolean) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier) {
@@ -367,8 +524,7 @@ fun TodoListScreenTopBar(
         actions = {
             IconButton(onClick = { onOpenReminderMenu(true) }) {
                 Icon(
-                    // TODO: change icon depending on whether there is an existing reminder.
-                    Icons.Default.Notifications,
+                    if (hasReminder) { Icons.Filled.Notifications } else { Icons.Outlined.Notifications },
                     contentDescription = stringResource(R.string.add_reminder),
                     modifier = Modifier
                         .padding(dimensionResource(R.dimen.padding_small))
@@ -447,6 +603,54 @@ fun TodoItem(
     )
 }
 
+@Composable
+fun NotificationPermissionRationaleDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(stringResource(R.string.notification_permission_rationale_title))
+        },
+        text = {
+            Text(stringResource(R.string.notification_permission_rationale_description))
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.yes))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.no))
+            }
+        },
+        modifier = modifier,
+    )
+}
+
+@Composable
+fun AlarmPermissionRationaleDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(stringResource(R.string.alarm_permission_rationale_title))
+        },
+        text = {
+            Text(stringResource(R.string.alarm_permission_rationale_description))
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.yes))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.no))
+            }
+        },
+        modifier = modifier,
+    )
+}
+
 fun dateAndTimeToDateTime(date: Long, hour: Int, minute: Int): LocalDateTime {
     val localDate = LocalDate.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC)
     val localTime = LocalTime.of(hour, minute)
@@ -468,13 +672,16 @@ fun ReminderDialog(
     var isDatePickerOpen by remember { mutableStateOf(false) }
     var isTimePickerOpen by remember { mutableStateOf(false) }
 
+    LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC)
+
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis =
             todoList.reminderDateTime?.toEpochSecond(ZoneOffset.UTC)?.times(1000) ?:
-                Instant.now().toEpochMilli()
+                // The instant representing the start of the local day in UTC.
+                LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
     )
 
-    // TODO: setting the time to 11:XX PM or 12:XX PM is buggy.
+    // TODO: setting the time to 11:XX PM or 12:XX PM is buggy. Should be fixed in material3 1.2.0
     // 11:XX PM -> 12:XX PM
     // 12:XX PM -> 12:XX AM
     val timePickerState = rememberTimePickerState(
@@ -482,6 +689,7 @@ fun ReminderDialog(
         initialMinute = todoList.reminderDateTime?.minute ?: 0
     )
 
+    //TODO: remove usage of derivedStateOf?
     val reminderDateTime by remember { derivedStateOf {
         datePickerState.selectedDateMillis?.let {
             dateAndTimeToDateTime(it, timePickerState.hour, timePickerState.minute)

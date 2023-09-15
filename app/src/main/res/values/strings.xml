@@ -20,4 +20,9 @@
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="done">Done</string>
+    <string name="notification_permission_rationale_title">Allow notifications</string>
+    <string name="notification_permission_rationale_description">This app requires permission to send notifications. Would you like to grant it?</string>
+    <string name="reminder_channel_name">Reminders</string>
+    <string name="alarm_permission_rationale_title">Allow alarms</string>
+    <string name="alarm_permission_rationale_description">This app requires permission to set alarms. Would you like to grant it?</string>
 </resources>
