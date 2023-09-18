@@ -2,9 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".TodoApplication"
@@ -20,15 +20,26 @@
 
         <activity
             android:name=".ui.MainActivity"
-            android:windowSoftInputMode="adjustResize"
             android:exported="true"
-            android:theme="@style/Theme.Todo">
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Todo"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Remove the default initialization because WorkManager is initialized by Hilt. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="remove" />
+
+        <receiver
+            android:name=".NotificationActionReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".AlarmReceiver"
@@ -40,13 +51,6 @@
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
-
-        <!-- Remove the default initialization because WorkManager is initialized by Hilt. -->
-        <provider
-            android:name="androidx.startup.InitializationProvider"
-            android:authorities="${applicationId}.androidx-startup"
-            tools:node="remove">
-        </provider>
     </application>
 
 </manifest>

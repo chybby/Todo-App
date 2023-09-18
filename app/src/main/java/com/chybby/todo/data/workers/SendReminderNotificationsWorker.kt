@@ -1,17 +1,23 @@
 package com.chybby.todo.data.workers
 
 import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.chybby.todo.NotificationActionReceiver
 import com.chybby.todo.R
 import com.chybby.todo.TodoApplication
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.data.TodoListRepository
+import com.chybby.todo.ui.list.pendingIntentForTodoList
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -24,37 +30,85 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
     private val todoListRepository: TodoListRepository,
 ) : CoroutineWorker(appContext, workerParams) {
 
+    private fun buildItemNotification(todoItem: TodoItem, todoList: TodoList): Notification {
+
+        // Each TodoList has its own notification group.
+        val groupKey = GROUP_KEY_REMINDER + todoList.id.toString()
+
+        val doneIntent = Intent(applicationContext, NotificationActionReceiver::class.java)
+        doneIntent.action = NotificationActionReceiver.DONE_ACTION
+        doneIntent.data = Uri.Builder()
+            .appendQueryParameter(
+                NotificationActionReceiver.ITEM_ID_PARAMETER,
+                todoItem.id.toString()
+            )
+            .build()
+        val donePendingIntent: PendingIntent =
+            PendingIntent.getBroadcast(
+                /* context = */ applicationContext,
+                /* requestCode = */ 0,
+                /* intent = */ doneIntent,
+                /* flags = */ PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+        val deleteIntent = Intent(applicationContext, NotificationActionReceiver::class.java)
+        deleteIntent.action = NotificationActionReceiver.CLEARED_ACTION
+        deleteIntent.data = Uri.Builder()
+            .appendQueryParameter(
+                NotificationActionReceiver.ITEM_ID_PARAMETER,
+                todoItem.id.toString()
+            )
+            .build()
+        val deletePendingIntent: PendingIntent =
+            PendingIntent.getBroadcast(
+                /* context = */ applicationContext,
+                /* requestCode = */ 0,
+                /* intent = */ deleteIntent,
+                /* flags = */ PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+        return NotificationCompat.Builder(applicationContext, TodoApplication.REMINDER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.notification_icon)
+            .setContentTitle(todoItem.summary)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setGroup(groupKey)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
+            // Avoid sorting integers lexicographically instead of numerically.
+            .setSortKey(todoItem.position.toString().padStart(10, '0'))
+            .setContentIntent(applicationContext.pendingIntentForTodoList(todoList.id))
+            .addAction(
+                R.drawable.done,
+                applicationContext.getString(R.string.done),
+                donePendingIntent
+            )
+            .setDeleteIntent(deletePendingIntent)
+            .build()
+    }
+
     @SuppressLint("MissingPermission")
-    fun createNotifications(
+    private suspend fun createNotifications(
         notificationManager: NotificationManagerCompat,
         todoList: TodoList,
         todoItems: List<TodoItem>,
     ) {
-        //TODO: Create a notification group for each todo list.
-        //TODO: Tapping the notification should open the app to the appropriate list.
         //TODO: Have a look at https://developer.android.com/develop/ui/views/notifications/custom-notification/.
         //TODO: Update notification icon.
 
+        // Create a notification for each uncompleted TodoItem.
         for (todoItem in todoItems) {
-            //TODO: Add actions for completing todo items from the notification.
-            //TODO: Create NotificationActionReceiver for completing notification actions.
-//                val doneIntent = Intent(applicationContext, AlarmReceiver::class.java).apply {
-//                    action = "TODO"
-//                    putExtra(EXTRA_NOTIFICATION_ID, 0)
-//                }
-//                val donePendingIntent: PendingIntent =
-//                    PendingIntent.getBroadcast(applicationContext, 0, doneIntent,
-//                        PendingIntent.FLAG_IMMUTABLE)
+            val notification = buildItemNotification(todoItem, todoList)
 
-            val builder =
-                NotificationCompat.Builder(applicationContext, TodoApplication.REMINDER_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.notification_icon)
-                    .setContentTitle(todoItem.summary)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            //.addAction(R.drawable.done, applicationContext.getString(R.string.done), donePendingIntent)
+            val itemNotificationId = todoListRepository.allocateTodoItemNotificationId(todoItem.id)
 
-            notificationManager.notify(todoItem.id.toInt(), builder.build())
+            notificationManager.notify(itemNotificationId, notification)
         }
+
+        // Create a summary notification.
+        val summaryNotification = buildSummaryNotification(applicationContext, todoList, todoItems)
+
+        val listNotificationId = todoListRepository.allocateTodoListNotificationId(todoList.id)
+
+        notificationManager.notify(listNotificationId, summaryNotification)
     }
 
     override suspend fun doWork(): Result {
@@ -63,7 +117,7 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
 
         return try {
             if (listId == -1L) {
-                Timber.e("No list id given to SendReminderNotificationsWorker")
+                Timber.e("Missing input list id.")
                 throw IllegalArgumentException("Missing input list id")
             }
 
@@ -84,6 +138,11 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
             val todoItems = todoListRepository.getTodoItemsStreamByListId(listId).first()
                 .filter { !it.isCompleted }
 
+            if (todoItems.isEmpty()) {
+                // No items to send notifications for.
+                return Result.success()
+            }
+
             createNotifications(notificationManager, todoList, todoItems)
 
             return Result.success()
@@ -96,6 +155,34 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
 
     companion object {
         const val KEY_LIST_ID = "KEY_LIST_ID"
-        // const val GROUP_KEY_REMINDER = "com.chybby.todo.REMINDER."
+        const val GROUP_KEY_REMINDER = "com.chybby.todo.REMINDER."
+
+        fun buildSummaryNotification(
+            context: Context,
+            todoList: TodoList,
+            todoItems: List<TodoItem>,
+        ): Notification {
+
+            // Each TodoList has its own notification group.
+            val groupKey = GROUP_KEY_REMINDER + todoList.id.toString()
+
+            val inboxStyle = NotificationCompat.InboxStyle()
+            for (todoItem in todoItems) {
+                // Up to 6 of these lines are displayed in the summary.
+                inboxStyle.addLine(todoItem.summary)
+            }
+
+            return NotificationCompat.Builder(context, TodoApplication.REMINDER_CHANNEL_ID)
+                .setSmallIcon(R.drawable.notification_icon)
+                .setContentTitle(todoList.name)
+                .setStyle(inboxStyle)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setOnlyAlertOnce(true)
+                .setGroup(groupKey)
+                .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
+                .setGroupSummary(true)
+                .setContentIntent(context.pendingIntentForTodoList(todoList.id))
+                .build()
+        }
     }
 }

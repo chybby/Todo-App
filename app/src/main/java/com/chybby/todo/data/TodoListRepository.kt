@@ -14,6 +14,8 @@ interface TodoListRepository {
 
     fun getTodoItemsStreamByListId(listId: Long): Flow<List<TodoItem>>
 
+    suspend fun getTodoItem(id: Long): TodoItem
+
     // TodoList.
 
     suspend fun addTodoList(): Long
@@ -28,6 +30,8 @@ interface TodoListRepository {
 
     suspend fun editTodoListReminder(id: Long, dateTime: LocalDateTime?)
 
+    suspend fun allocateTodoListNotificationId(id: Long): Int
+
     suspend fun scheduleExistingReminders()
 
     // TodoItem.
@@ -41,4 +45,12 @@ interface TodoListRepository {
     suspend fun moveTodoItem(id: Long, afterPosition: Int)
 
     suspend fun deleteTodoItem(id: Long)
+
+    suspend fun allocateTodoItemNotificationId(id: Long): Int
+
+    // Notification.
+
+    suspend fun clearNotificationId(id: Int)
+
+    suspend fun clearAllNotifications()
 }

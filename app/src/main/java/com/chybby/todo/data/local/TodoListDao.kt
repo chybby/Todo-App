@@ -20,11 +20,20 @@ interface TodoListDao {
     @Query("SELECT * FROM todo_list ORDER BY position")
     suspend fun getTodoLists(): List<TodoListEntity>
 
+    @Query("SELECT notification_id FROM todo_list WHERE id = :id")
+    suspend fun getTodoListNotificationId(id: Long): Int?
+
+    @Query("SELECT notification_id FROM todo_item WHERE id = :id")
+    suspend fun getTodoItemNotificationId(id: Long): Int?
+
     @Query("SELECT * FROM todo_list WHERE id = :id")
     fun observeTodoListById(id: Long): Flow<TodoListEntity>
 
     @Query("SELECT * FROM todo_item WHERE list_id = :listId ORDER BY position")
     fun observeTodoItemsByListId(listId: Long): Flow<List<TodoItemEntity>>
+
+    @Query("SELECT * FROM todo_item WHERE id = :id LIMIT 1")
+    suspend fun getTodoItem(id: Long): TodoItemEntity
 
     @Query("SELECT position FROM todo_list ORDER BY position DESC LIMIT 1")
     suspend fun getLastListPosition(): Int
@@ -63,6 +72,9 @@ interface TodoListDao {
         return insertTodoItem(todoItem)
     }
 
+    @Insert
+    suspend fun insertNotification(notification: NotificationEntity): Long
+
     // Modify
 
     @Query("UPDATE todo_list SET name = :name WHERE id = :id")
@@ -83,6 +95,16 @@ interface TodoListDao {
     @Query("UPDATE todo_list SET reminder_date_time = :dateTime WHERE id = :id")
     suspend fun updateTodoListReminder(id: Long, dateTime: LocalDateTime?)
 
+    @Query("UPDATE todo_list SET notification_id = :notificationId WHERE id = :id")
+    suspend fun updateTodoListNotificationId(id: Long, notificationId: Int?)
+
+    @Transaction
+    suspend fun allocateTodoListNotificationId(id: Long): Int {
+        val notificationId = insertNotification(NotificationEntity()).toInt()
+        updateTodoListNotificationId(id, notificationId)
+        return notificationId
+    }
+
     @Query("UPDATE todo_item SET summary = :summary WHERE id = :id")
     suspend fun updateTodoItemSummary(id: Long, summary: String)
 
@@ -102,6 +124,16 @@ interface TodoListDao {
         updateTodoItemPosition(id, position)
     }
 
+    @Query("UPDATE todo_item SET notification_id = :notificationId WHERE id = :id")
+    suspend fun updateTodoItemNotificationId(id: Long, notificationId: Int?)
+
+    @Transaction
+    suspend fun allocateTodoItemNotificationId(id: Long): Int {
+        val notificationId = insertNotification(NotificationEntity()).toInt()
+        updateTodoItemNotificationId(id, notificationId)
+        return notificationId
+    }
+
     // Delete
 
     @Query("DELETE from todo_list WHERE id = :id")
@@ -109,6 +141,12 @@ interface TodoListDao {
 
     @Query("DELETE from todo_item WHERE id = :id")
     suspend fun deleteTodoItem(id: Long)
+
+    @Query("DELETE from notification WHERE id = :id")
+    suspend fun deleteNotification(id: Int)
+
+    @Query("DELETE from notification")
+    suspend fun deleteAllNotifications()
 
     @Query("DELETE from todo_item WHERE list_id = :listId AND is_completed")
     suspend fun deleteCompleted(listId: Long)

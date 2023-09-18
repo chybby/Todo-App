@@ -1,12 +1,16 @@
 package com.chybby.todo.data
 
 
+import android.content.Context
 import com.chybby.todo.data.local.TodoItemEntity
 import com.chybby.todo.data.local.TodoListDao
 import com.chybby.todo.data.local.TodoListEntity
+import com.chybby.todo.data.workers.NotificationActionWorker
 import com.chybby.todo.di.DefaultDispatcher
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
@@ -15,8 +19,13 @@ import javax.inject.Inject
 class OfflineTodoListRepository @Inject constructor(
     private val todoListDao: TodoListDao,
     private val reminderRepository: ReminderRepository,
+    @ApplicationContext private val context: Context,
     @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
 ) : TodoListRepository {
+
+    private suspend fun clearNotificationForItem(itemId: Long) {
+        NotificationActionWorker.clearNotificationForItem(itemId, this, context)
+    }
 
     // Streams.
 
@@ -47,6 +56,8 @@ class OfflineTodoListRepository @Inject constructor(
             }
         }
 
+    override suspend fun getTodoItem(id: Long): TodoItem = todoListDao.getTodoItem(id).toExternal()
+
     // TodoList.
 
     override suspend fun addTodoList(): Long {
@@ -54,7 +65,8 @@ class OfflineTodoListRepository @Inject constructor(
             TodoListEntity(
                 name = "",
                 position = 0,
-                reminderDateTime = null
+                reminderDateTime = null,
+                notificationId = null,
             )
         )
     }
@@ -66,10 +78,14 @@ class OfflineTodoListRepository @Inject constructor(
         todoListDao.updateTodoListName(id, name)
 
     override suspend fun deleteTodoList(id: Long) {
+        todoListDao.observeTodoItemsByListId(id).first().map { todoItem ->
+            clearNotificationForItem(todoItem.id)
+        }
         todoListDao.deleteTodoList(id)
         reminderRepository.deleteReminder(id)
     }
 
+    // Completed items shouldn't have a notification so no need to clear.
     override suspend fun deleteCompleted(id: Long) = todoListDao.deleteCompleted(id)
 
     override suspend fun editTodoListReminder(id: Long, dateTime: LocalDateTime?) {
@@ -93,6 +109,9 @@ class OfflineTodoListRepository @Inject constructor(
         }
     }
 
+    override suspend fun allocateTodoListNotificationId(id: Long): Int =
+        todoListDao.allocateTodoListNotificationId(id)
+
     // TodoItem.
 
     override suspend fun addTodoItem(listId: Long, afterPosition: Int?): Long {
@@ -101,6 +120,7 @@ class OfflineTodoListRepository @Inject constructor(
             isCompleted = false,
             listId = listId,
             position = afterPosition?.plus(1) ?: 0,
+            notificationId = null,
         )
 
         return if (afterPosition == null) {
@@ -113,12 +133,30 @@ class OfflineTodoListRepository @Inject constructor(
     override suspend fun editTodoItemSummary(id: Long, summary: String) =
         todoListDao.updateTodoItemSummary(id, summary)
 
-    override suspend fun completeTodoItem(id: Long, completed: Boolean) =
+    override suspend fun completeTodoItem(id: Long, completed: Boolean) {
         todoListDao.updateTodoItemCompleted(id, completed)
+        if (completed) {
+            clearNotificationForItem(id)
+        }
+    }
+
 
     override suspend fun moveTodoItem(id: Long, afterPosition: Int) =
         todoListDao.moveTodoItem(id, afterPosition + 1)
 
-    override suspend fun deleteTodoItem(id: Long) = todoListDao.deleteTodoItem(id)
+    override suspend fun deleteTodoItem(id: Long) {
+        clearNotificationForItem(id)
+        todoListDao.deleteTodoItem(id)
+    }
 
+    override suspend fun allocateTodoItemNotificationId(id: Long): Int =
+        todoListDao.allocateTodoItemNotificationId(id)
+
+    // Notification
+
+    override suspend fun clearNotificationId(id: Int) =
+        todoListDao.deleteNotification(id)
+
+    override suspend fun clearAllNotifications() =
+        todoListDao.deleteAllNotifications()
 }

@@ -21,8 +21,8 @@ class Converters {
 }
 
 @Database(
-    entities = [TodoItemEntity::class, TodoListEntity::class],
-    version = 3,
+    entities = [TodoItemEntity::class, TodoListEntity::class, NotificationEntity::class],
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

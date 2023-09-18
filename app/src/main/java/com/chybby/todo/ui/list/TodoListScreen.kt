@@ -469,6 +469,7 @@ fun requestAlarmPermissions(context: Context) {
     }
 }
 
+//TODO: capitalize.
 @Composable
 fun TodoTextField(
     value: String,
@@ -829,7 +830,7 @@ fun ReminderDialog(
                             onConfirm(reminderDateTime!!)
                         },
                         // Check if time is in the past.
-                        enabled = reminderDateTime != null && reminderDateTime!! > currentDateTime
+                        enabled = true//TODO: reminderDateTime != null && reminderDateTime!! > currentDateTime
                     ) {
                         Text(stringResource(R.string.save))
                     }
@@ -906,35 +907,45 @@ fun TodoListScreenPreview() {
         ) {
             TodoListScreen(
                 uiState = TodoListScreenUiState(
-                    todoList = TodoList(name = "Shopping", position = 0, reminderDateTime = null),
+                    todoList = TodoList(
+                        id = 0,
+                        name = "Shopping",
+                        position = 0,
+                        reminderDateTime = null
+                    ),
                     todoItems = persistentListOf(
                         TodoItem(
                             id = 0,
                             summary = "Eggs",
+                            listId = 0,
                             isCompleted = false,
                             position = 0
                         ),
                         TodoItem(
                             id = 1,
                             summary = "Bread",
+                            listId = 0,
                             isCompleted = false,
                             position = 1
                         ),
                         TodoItem(
                             id = 2,
                             summary = "Bag of chips",
+                            listId = 0,
                             isCompleted = false,
                             position = 2
                         ),
                         TodoItem(
                             id = 3,
                             summary = "Toothpaste",
+                            listId = 0,
                             isCompleted = true,
                             position = 3
                         ),
                         TodoItem(
                             id = 4,
                             summary = "Deodorant",
+                            listId = 0,
                             isCompleted = true,
                             position = 4
                         ),

@@ -2,10 +2,22 @@ package com.chybby.todo.data.local
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import java.time.LocalDateTime
 
-@Entity(tableName = "todo_list")
+@Entity(
+    tableName = "todo_list",
+    foreignKeys = [
+        ForeignKey(
+            entity = NotificationEntity::class,
+            parentColumns = arrayOf("id"),
+            childColumns = arrayOf("notification_id"),
+            onDelete = ForeignKey.SET_NULL,
+            onUpdate = ForeignKey.CASCADE,
+        ),
+    ]
+)
 data class TodoListEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -18,4 +30,7 @@ data class TodoListEntity(
     val reminderDateTime: LocalDateTime?,
 
     // TODO: remind based on location.
+
+    @ColumnInfo(name = "notification_id")
+    val notificationId: Int?,
 )
