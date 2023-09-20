@@ -718,8 +718,6 @@ fun ReminderDialog(
     var isDatePickerOpen by remember { mutableStateOf(false) }
     var isTimePickerOpen by remember { mutableStateOf(false) }
 
-    LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC)
-
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis =
         todoList.reminderDateTime?.toEpochSecond(ZoneOffset.UTC)?.times(1000) ?:
@@ -735,30 +733,17 @@ fun ReminderDialog(
         initialMinute = todoList.reminderDateTime?.minute ?: 0
     )
 
-    //TODO: remove usage of derivedStateOf?
-    val reminderDateTime by remember {
-        derivedStateOf {
-            datePickerState.selectedDateMillis?.let {
-                dateAndTimeToDateTime(it, timePickerState.hour, timePickerState.minute)
-            }
-        }
-    }
+    val reminderDateTime by rememberUpdatedState(datePickerState.selectedDateMillis?.let {
+        dateAndTimeToDateTime(it, timePickerState.hour, timePickerState.minute)
+    })
 
-    val formattedTime by remember {
-        derivedStateOf {
-            val time = LocalTime.of(timePickerState.hour, timePickerState.minute)
-            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(time)
-        }
-    }
+    val time = LocalTime.of(timePickerState.hour, timePickerState.minute)
+    val formattedTime = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(time)
 
-    val formattedDate by remember {
-        derivedStateOf {
-            val date = datePickerState.selectedDateMillis?.let {
-                LocalDate.ofInstant(Instant.ofEpochMilli(it), ZoneOffset.UTC)
-            }
-            date?.let { DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).format(it) }
-        }
+    val date = datePickerState.selectedDateMillis?.let {
+        LocalDate.ofInstant(Instant.ofEpochMilli(it), ZoneOffset.UTC)
     }
+    val formattedDate = date?.let { DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).format(it) }
 
     // Represent the local time as a UTC timestamp.
     var currentDateTime by remember { mutableStateOf(LocalDateTime.now()) }
@@ -768,6 +753,13 @@ fun ReminderDialog(
         while (true) {
             delay(1000)
             currentDateTime = LocalDateTime.now()
+        }
+    }
+
+    // Check if time is in the past.
+    val saveButtonEnabled by remember {
+        derivedStateOf {
+            (reminderDateTime != null) && (reminderDateTime!! > currentDateTime)
         }
     }
 
@@ -829,8 +821,7 @@ fun ReminderDialog(
                         onClick = {
                             onConfirm(reminderDateTime!!)
                         },
-                        // Check if time is in the past.
-                        enabled = true//TODO: reminderDateTime != null && reminderDateTime!! > currentDateTime
+                        enabled = saveButtonEnabled
                     ) {
                         Text(stringResource(R.string.save))
                     }
