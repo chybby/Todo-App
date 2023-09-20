@@ -11,6 +11,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -139,33 +140,6 @@ fun TodoListScreen(
         return
     }
 
-    val smallPadding = dimensionResource(R.dimen.padding_small)
-
-    // Store a mutable version of the list locally so it is updated quickly while dragging.
-    val uncompletedTodoItems by rememberUpdatedState(uiState.todoItems.filter { !it.isCompleted }
-        .toMutableStateList())
-
-    val state = rememberReorderableLazyListState(
-        onMove = { from, to ->
-            // While dragging, update the list stored in the composition.
-            uncompletedTodoItems.apply {
-                add(to.index, removeAt(from.index))
-            }
-        },
-        onDragEnd = { from, to ->
-            // When drag ends, update the database.
-            onMoveTodoItem(from, to)
-        },
-        // Only allow drag over other uncompleted items.
-        canDragOver = { draggedOver, _ ->
-            draggedOver.index < uncompletedTodoItems.size
-        }
-    )
-
-    var indexToFocus by remember { mutableStateOf<Int?>(null) }
-
-    var completedItemsShown by rememberSaveable { mutableStateOf(false) }
-
     // Permissions
     var notificationPermissionRationaleOpen by rememberSaveable { mutableStateOf(false) }
     var alarmPermissionRationaleOpen by rememberSaveable { mutableStateOf(false) }
@@ -285,137 +259,18 @@ fun TodoListScreen(
         },
         modifier = modifier
     ) { contentPadding ->
-        LazyColumn(
-            state = state.listState,
+        TodoItemsColumn(
+            todoItems = uiState.todoItems,
+            onTodoItemAdded = onTodoItemAdded,
+            onSummaryChanged = onSummaryChanged,
+            onCompleted = onCompleted,
+            onMoveTodoItem = onMoveTodoItem,
+            onDelete = onDelete,
+            onDeleteCompleted = onDeleteCompleted,
             contentPadding = contentPadding,
             modifier = Modifier
                 .fillMaxSize()
-                .reorderable(state)
-        ) {
-
-            // Uncompleted items.
-            itemsIndexed(uncompletedTodoItems, key = { _, item -> item.id }) { index, todoItem ->
-
-                val focusRequester = remember { FocusRequester() }
-
-                ReorderableItem(state, key = todoItem.id) { isDragging ->
-                    TodoItem(
-                        todoItem = todoItem,
-                        onCompleted = { onCompleted(todoItem.id, it) },
-                        onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
-                        onDelete = { focusPreviousItem ->
-                            if (focusPreviousItem) {
-                                indexToFocus = if (index >= 1) index - 1 else null
-                            }
-                            onDelete(todoItem.id)
-                        },
-                        onNext = {
-                            indexToFocus = index + 1
-                            onTodoItemAdded(todoItem.position)
-                        },
-                        reorderableLazyListState = state,
-                        modifier = Modifier
-                            .shadow(elevation = if (isDragging) 4.dp else 0.dp),
-                        focusRequester = focusRequester,
-                    )
-                }
-
-                LaunchedEffect(uiState.todoItems.size) {
-                    if (index == indexToFocus) {
-                        focusRequester.requestFocus()
-                        indexToFocus = null
-                    }
-                }
-            }
-
-            // Add new item button.
-            item {
-                TextButton(
-                    onClick = {
-                        indexToFocus = uncompletedTodoItems.size
-                        onTodoItemAdded(null)
-                    }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_item))
-                    Spacer(Modifier.width(smallPadding))
-                    Text(
-                        text = stringResource(R.string.add_item),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            // Completed items.
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                ) {
-                    TextButton(
-                        onClick = { completedItemsShown = !completedItemsShown }
-                    ) {
-                        val icon = when (completedItemsShown) {
-                            true -> {
-                                Icons.Default.KeyboardArrowDown
-                            }
-
-                            false -> {
-                                Icons.Default.KeyboardArrowUp
-                            }
-                        }
-
-                        val contentDescription = when (completedItemsShown) {
-                            true -> {
-                                stringResource(R.string.hide_completed_items)
-                            }
-
-                            false -> {
-                                stringResource(R.string.show_completed_items)
-                            }
-                        }
-
-                        Icon(icon, contentDescription)
-                        Spacer(Modifier.width(smallPadding))
-                        Text(text = "Completed items", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    IconButton(
-                        //TODO: Investigate why surrounding this in a lambda reduces recompositions.
-                        // (also affects other functions.)
-                        onClick = onDeleteCompleted,
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            stringResource(R.string.delete_all_completed_items)
-                        )
-                    }
-                }
-            }
-
-            if (completedItemsShown) {
-                items(
-                    uiState.todoItems.filter { it.isCompleted },
-                    key = { it.id }
-                ) { todoItem ->
-                    TodoItem(
-                        todoItem = todoItem,
-                        onCompleted = { onCompleted(todoItem.id, it) },
-                        onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
-                        onDelete = { onDelete(todoItem.id) },
-                    )
-                }
-            }
-        }
-    }
-
-    // Scroll to focused item.
-    LaunchedEffect(uiState.todoItems.size) {
-        indexToFocus?.let { index ->
-            if (!state.listState.isItemWithIndexVisible(index)) {
-                state.listState.animateScrollToItem(index)
-            }
-        }
+        )
     }
 
     if (uiState.reminderMenuOpen) {
@@ -467,6 +322,177 @@ fun requestAlarmPermissions(context: Context) {
         intent.action = Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
         intent.data = Uri.parse("package:" + context.packageName)
         context.startActivity(intent)
+    }
+}
+
+@Composable
+fun TodoItemsColumn(
+    todoItems: List<TodoItem>,
+    onTodoItemAdded: (afterPosition: Int?) -> Unit,
+    onSummaryChanged: (Long, String) -> Unit,
+    onCompleted: (Long, Boolean) -> Unit,
+    onMoveTodoItem: (Int, Int) -> Unit,
+    onDelete: (Long) -> Unit,
+    onDeleteCompleted: () -> Unit,
+    contentPadding: PaddingValues,
+    modifier: Modifier = Modifier,
+) {
+    val smallPadding = dimensionResource(R.dimen.padding_small)
+
+    // Store a mutable version of the list locally so it is updated quickly while dragging.
+    val uncompletedTodoItems by rememberUpdatedState(todoItems.filter { !it.isCompleted }
+        .toMutableStateList())
+
+    val state = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            // While dragging, update the list stored in the composition.
+            uncompletedTodoItems.apply {
+                add(to.index, removeAt(from.index))
+            }
+        },
+        onDragEnd = { from, to ->
+            // When drag ends, update the database.
+            onMoveTodoItem(from, to)
+        },
+        // Only allow drag over other uncompleted items.
+        canDragOver = { draggedOver, _ ->
+            draggedOver.index < uncompletedTodoItems.size
+        }
+    )
+
+    var indexToFocus by remember { mutableStateOf<Int?>(null) }
+
+    var completedItemsShown by rememberSaveable { mutableStateOf(false) }
+
+    LazyColumn(
+        state = state.listState,
+        contentPadding = contentPadding,
+        modifier = modifier
+            .reorderable(state)
+    ) {
+
+        // Uncompleted items.
+        itemsIndexed(uncompletedTodoItems, key = { _, item -> item.id }) { index, todoItem ->
+
+            val focusRequester = remember { FocusRequester() }
+
+            ReorderableItem(state, key = todoItem.id) { isDragging ->
+                TodoItem(
+                    todoItem = todoItem,
+                    onCompleted = { onCompleted(todoItem.id, it) },
+                    onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
+                    onDelete = { focusPreviousItem ->
+                        if (focusPreviousItem) {
+                            indexToFocus = if (index >= 1) index - 1 else null
+                        }
+                        onDelete(todoItem.id)
+                    },
+                    onNext = {
+                        indexToFocus = index + 1
+                        onTodoItemAdded(todoItem.position)
+                    },
+                    reorderableLazyListState = state,
+                    modifier = Modifier
+                        .shadow(elevation = if (isDragging) 4.dp else 0.dp),
+                    focusRequester = focusRequester,
+                )
+            }
+
+            LaunchedEffect(todoItems.size) {
+                if (index == indexToFocus) {
+                    focusRequester.requestFocus()
+                    indexToFocus = null
+                }
+            }
+        }
+
+        // Add new item button.
+        item {
+            TextButton(
+                onClick = {
+                    indexToFocus = uncompletedTodoItems.size
+                    onTodoItemAdded(null)
+                }
+            ) {
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_item))
+                Spacer(Modifier.width(smallPadding))
+                Text(
+                    text = stringResource(R.string.add_item),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
+        // Completed items.
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+            ) {
+                TextButton(
+                    onClick = { completedItemsShown = !completedItemsShown }
+                ) {
+                    val icon = when (completedItemsShown) {
+                        true -> {
+                            Icons.Default.KeyboardArrowDown
+                        }
+
+                        false -> {
+                            Icons.Default.KeyboardArrowUp
+                        }
+                    }
+
+                    val contentDescription = when (completedItemsShown) {
+                        true -> {
+                            stringResource(R.string.hide_completed_items)
+                        }
+
+                        false -> {
+                            stringResource(R.string.show_completed_items)
+                        }
+                    }
+
+                    Icon(icon, contentDescription)
+                    Spacer(Modifier.width(smallPadding))
+                    Text(text = "Completed items", style = MaterialTheme.typography.bodyMedium)
+                }
+                IconButton(
+                    //TODO: Investigate why surrounding this in a lambda reduces recompositions.
+                    // (also affects other functions.)
+                    onClick = onDeleteCompleted,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        stringResource(R.string.delete_all_completed_items)
+                    )
+                }
+            }
+        }
+
+        if (completedItemsShown) {
+            items(
+                todoItems.filter { it.isCompleted },
+                key = { it.id }
+            ) { todoItem ->
+                TodoItem(
+                    todoItem = todoItem,
+                    onCompleted = { onCompleted(todoItem.id, it) },
+                    onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
+                    onDelete = { onDelete(todoItem.id) },
+                )
+            }
+        }
+    }
+
+    // Scroll to focused item.
+    LaunchedEffect(todoItems.size) {
+        indexToFocus?.let { index ->
+            if (!state.listState.isItemWithIndexVisible(index)) {
+                state.listState.animateScrollToItem(index)
+            }
+        }
     }
 }
 
