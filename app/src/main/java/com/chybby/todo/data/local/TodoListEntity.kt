@@ -29,7 +29,10 @@ data class TodoListEntity(
     @ColumnInfo(name = "reminder_date_time")
     val reminderDateTime: LocalDateTime?,
 
-    // TODO: remind based on location.
+    @ColumnInfo(name = "reminder_location_lat")
+    val reminderLocationLatitude: Float?,
+    @ColumnInfo(name = "reminder_location_long")
+    val reminderLocationLongitude: Float?,
 
     @ColumnInfo(name = "notification_id")
     val notificationId: Int?,

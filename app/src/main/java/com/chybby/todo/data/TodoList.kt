@@ -3,19 +3,20 @@ package com.chybby.todo.data
 import androidx.compose.runtime.Immutable
 import java.time.LocalDateTime
 
-//TODO: reminder can either be time or location based.
-//sealed interface Reminder {
-//    data class TimeReminder(val dateTime: LocalDateTime): Reminder
-//    // data class LocationReminder(val location: ??): Reminder
-//}
+sealed interface Reminder {
+    // A date and time with no associated timezone.
+    data class TimeReminder(val dateTime: LocalDateTime) : Reminder
+
+    // A latitude and longitude.
+    data class LocationReminder(val location: Pair<Float, Float>) : Reminder
+}
 
 @Immutable
 data class TodoList(
     val name: String = "",
     // Where this TodoList is positioned relative to other TodoLists.
     val position: Int = 0,
-    // A date and time with no associated timezone.
-    val reminderDateTime: LocalDateTime? = null,
+    val reminder: Reminder? = null,
     val notificationId: Int? = null,
     val id: Long = 0,
 )

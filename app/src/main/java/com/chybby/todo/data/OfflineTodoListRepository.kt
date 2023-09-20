@@ -66,6 +66,8 @@ class OfflineTodoListRepository @Inject constructor(
                 name = "",
                 position = 0,
                 reminderDateTime = null,
+                reminderLocationLatitude = null,
+                reminderLocationLongitude = null,
                 notificationId = null,
             )
         )
@@ -100,12 +102,18 @@ class OfflineTodoListRepository @Inject constructor(
 
     override suspend fun scheduleExistingReminders() {
         getTodoLists().map { todoList ->
-            if (todoList.reminderDateTime == null) {
-                return@map
-            }
+            when (todoList.reminder) {
+                is Reminder.TimeReminder -> {
+                    // If the reminder is in the past, the alarm will be triggered immediately.
+                    reminderRepository.createReminder(todoList.id, todoList.reminder.dateTime)
+                }
 
-            // If the reminder is in the past, the alarm will be triggered immediately.
-            reminderRepository.createReminder(todoList.id, todoList.reminderDateTime)
+                is Reminder.LocationReminder -> {
+                    //TODO: recreate geofence.
+                }
+
+                null -> {}
+            }
         }
     }
 

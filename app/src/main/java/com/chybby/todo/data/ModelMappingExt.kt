@@ -13,7 +13,9 @@ fun TodoList.toLocal() = TodoListEntity(
     id = id,
     name = name,
     position = position,
-    reminderDateTime = reminderDateTime,
+    reminderDateTime = if (reminder is Reminder.TimeReminder) reminder.dateTime else null,
+    reminderLocationLatitude = if (reminder is Reminder.LocationReminder) reminder.location.first else null,
+    reminderLocationLongitude = if (reminder is Reminder.LocationReminder) reminder.location.first else null,
     notificationId = notificationId,
 )
 
@@ -49,7 +51,13 @@ fun List<TodoItemEntity>.toExternal() = map(TodoItemEntity::toExternal)
 fun TodoListEntity.toExternal() = TodoList(
     name = name,
     position = position,
-    reminderDateTime = reminderDateTime,
+    reminder = if (reminderDateTime != null) {
+        Reminder.TimeReminder(reminderDateTime)
+    } else if (reminderLocationLatitude != null && reminderLocationLongitude != null) {
+        Reminder.LocationReminder(Pair(reminderLocationLatitude, reminderLocationLongitude))
+    } else {
+        null
+    },
     notificationId = notificationId,
     id = id,
 )
