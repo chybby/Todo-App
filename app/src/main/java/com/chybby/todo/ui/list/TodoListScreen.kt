@@ -84,6 +84,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -469,7 +470,6 @@ fun requestAlarmPermissions(context: Context) {
     }
 }
 
-//TODO: capitalize.
 @Composable
 fun TodoTextField(
     value: String,
@@ -509,7 +509,10 @@ fun TodoTextField(
                 onNext()
             },
         ),
-        keyboardOptions = KeyboardOptions(imeAction = imeAction),
+        keyboardOptions = KeyboardOptions(
+            imeAction = imeAction,
+            capitalization = KeyboardCapitalization.Sentences
+        ),
         singleLine = true,
         textStyle = textStyle.copy(color = MaterialTheme.colorScheme.onBackground),
         cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
