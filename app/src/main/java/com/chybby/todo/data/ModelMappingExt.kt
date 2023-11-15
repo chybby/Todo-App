@@ -2,6 +2,7 @@ package com.chybby.todo.data
 
 import com.chybby.todo.data.local.TodoItemEntity
 import com.chybby.todo.data.local.TodoListEntity
+import com.google.android.gms.maps.model.LatLng
 
 // There are two models:
 //  - External: the model exposed from the data layer to the rest of the application.
@@ -14,8 +15,9 @@ fun TodoList.toLocal() = TodoListEntity(
     name = name,
     position = position,
     reminderDateTime = if (reminder is Reminder.TimeReminder) reminder.dateTime else null,
-    reminderLocationLatitude = if (reminder is Reminder.LocationReminder) reminder.location.first else null,
-    reminderLocationLongitude = if (reminder is Reminder.LocationReminder) reminder.location.first else null,
+    reminderLocationLatitude = if (reminder is Reminder.LocationReminder) reminder.location.latLng.latitude else null,
+    reminderLocationLongitude = if (reminder is Reminder.LocationReminder) reminder.location.latLng.longitude else null,
+    reminderLocationDescription = if (reminder is Reminder.LocationReminder) reminder.location.description else null,
     notificationId = notificationId,
 )
 
@@ -53,8 +55,13 @@ fun TodoListEntity.toExternal() = TodoList(
     position = position,
     reminder = if (reminderDateTime != null) {
         Reminder.TimeReminder(reminderDateTime)
-    } else if (reminderLocationLatitude != null && reminderLocationLongitude != null) {
-        Reminder.LocationReminder(Pair(reminderLocationLatitude, reminderLocationLongitude))
+    } else if (reminderLocationLatitude != null && reminderLocationLongitude != null && reminderLocationDescription != null) {
+        Reminder.LocationReminder(
+            Location(
+                LatLng(reminderLocationLatitude, reminderLocationLongitude),
+                reminderLocationDescription
+            )
+        )
     } else {
         null
     },

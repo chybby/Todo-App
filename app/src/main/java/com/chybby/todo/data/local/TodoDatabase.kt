@@ -7,6 +7,7 @@ import androidx.room.TypeConverters
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import kotlin.time.Duration.Companion.seconds
 
 class Converters {
     @TypeConverter
@@ -16,13 +17,13 @@ class Converters {
 
     @TypeConverter
     fun dateToTimestamp(dateTime: LocalDateTime?): Long? {
-        return dateTime?.toEpochSecond(ZoneOffset.UTC)?.times(1000)
+        return dateTime?.toEpochSecond(ZoneOffset.UTC)?.seconds?.inWholeMilliseconds
     }
 }
 
 @Database(
     entities = [TodoItemEntity::class, TodoListEntity::class, NotificationEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

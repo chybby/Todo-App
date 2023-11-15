@@ -1,7 +1,6 @@
 package com.chybby.todo.data
 
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDateTime
 
 interface TodoListRepository {
     // Streams.
@@ -28,7 +27,7 @@ interface TodoListRepository {
 
     suspend fun deleteCompleted(id: Long)
 
-    suspend fun editTodoListReminder(id: Long, dateTime: LocalDateTime?)
+    suspend fun editTodoListReminder(id: Long, reminder: Reminder?)
 
     suspend fun allocateTodoListNotificationId(id: Long): Int
 

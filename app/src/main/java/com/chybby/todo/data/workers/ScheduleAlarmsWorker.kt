@@ -10,6 +10,7 @@ import dagger.assisted.AssistedInject
 import timber.log.Timber
 
 @HiltWorker
+// TODO: rename to ScheduleRemindersWorker, allow scheduling only a certain type of reminder.
 class ScheduleAlarmsWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,

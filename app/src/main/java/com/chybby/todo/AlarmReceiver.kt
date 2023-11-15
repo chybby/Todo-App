@@ -28,7 +28,7 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Timber.d("Received broadcast.")
         when (intent.action) {
-            //TODO: split these into a separate BroadcastReceiver.
+            // TODO: split these into a separate BroadcastReceiver that receives system broadcasts.
             Intent.ACTION_BOOT_COMPLETED -> {
                 Timber.d("Received intent with action ${intent.action}")
                 workManager
@@ -40,6 +40,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
             AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
                 Timber.d("Received intent with action ${intent.action}")
+                // TODO: this should only schedule time-based reminders.
                 workManager.enqueue(OneTimeWorkRequest.from(ScheduleAlarmsWorker::class.java))
             }
 

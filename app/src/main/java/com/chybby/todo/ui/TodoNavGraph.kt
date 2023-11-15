@@ -1,5 +1,7 @@
 package com.chybby.todo.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -13,7 +15,15 @@ import com.chybby.todo.ui.list.todoListScreen
 fun TodoNavGraph(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = HomeRoute, modifier = modifier) {
+    NavHost(
+        navController = navController,
+        startDestination = HomeRoute,
+        modifier = modifier,
+        enterTransition = { EnterTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popExitTransition = { ExitTransition.None },
+    ) {
         homeScreen(
             onNavigateToTodoList = { todoListId ->
                 navController.navigateToTodoList(todoListId)

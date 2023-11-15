@@ -9,14 +9,11 @@ import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,17 +25,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DismissDirection
 import androidx.compose.material3.DismissValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,15 +43,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismiss
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberDismissState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,7 +78,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.chybby.todo.R
@@ -111,15 +99,10 @@ import org.burnoutcrew.reorderable.detectReorder
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 import timber.log.Timber
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
-const val TYPING_PERSIST_DELAY_MS: Long = 300
+val PERSIST_TEXT_FIELD_TYPING_DELAY: Duration = 300.milliseconds
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -133,7 +116,7 @@ fun TodoListScreen(
     onDelete: (Long) -> Unit,
     onDeleteCompleted: () -> Unit,
     onOpenReminderMenu: (Boolean) -> Unit,
-    onReminderUpdated: (LocalDateTime?) -> Unit,
+    onReminderUpdated: (Reminder?) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -252,7 +235,7 @@ fun TodoListScreen(
                         }
                     }
 
-                    // Permissions already granted.
+                    // Permissions granted.
                     onOpenReminderMenu(open)
                 },
                 onNavigateBack = onNavigateBack,
@@ -276,9 +259,9 @@ fun TodoListScreen(
 
     if (uiState.reminderMenuOpen) {
         ReminderDialog(
-            todoList = uiState.todoList,
-            onConfirm = { dateTime ->
-                onReminderUpdated(dateTime)
+            todoListReminder = uiState.todoList.reminder,
+            onConfirm = { reminder ->
+                onReminderUpdated(reminder)
                 onOpenReminderMenu(false)
             },
             onDelete = {
@@ -343,6 +326,8 @@ fun TodoItemsColumn(
     // Store a mutable version of the list locally so it is updated quickly while dragging.
     val uncompletedTodoItems by rememberUpdatedState(todoItems.filter { !it.isCompleted }
         .toMutableStateList())
+
+    val completedTodoItems = remember(todoItems) { todoItems.filter { it.isCompleted } }
 
     val state = rememberReorderableLazyListState(
         onMove = { from, to ->
@@ -474,7 +459,7 @@ fun TodoItemsColumn(
 
         if (completedItemsShown) {
             items(
-                todoItems.filter { it.isCompleted },
+                completedTodoItems,
                 key = { it.id }
             ) { todoItem ->
                 TodoItem(
@@ -516,7 +501,7 @@ fun TodoTextField(
     }
 
     LaunchedEffect(text.text) {
-        delay(TYPING_PERSIST_DELAY_MS)
+        delay(PERSIST_TEXT_FIELD_TYPING_DELAY)
         // TODO: Changes are lost if the user navigates back very quickly after typing.
         onValueChanged(text.text)
     }
@@ -727,194 +712,6 @@ fun AlarmPermissionRationaleDialog(
     )
 }
 
-fun dateAndTimeToDateTime(date: Long, hour: Int, minute: Int): LocalDateTime {
-    val localDate = LocalDate.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC)
-    val localTime = LocalTime.of(hour, minute)
-    return LocalDateTime.of(localDate, localTime)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ReminderDialog(
-    todoList: TodoList,
-    onConfirm: (LocalDateTime) -> Unit,
-    onDelete: () -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val smallPadding = dimensionResource(R.dimen.padding_small)
-    val mediumPadding = dimensionResource(R.dimen.padding_medium)
-
-    var isDatePickerOpen by remember { mutableStateOf(false) }
-    var isTimePickerOpen by remember { mutableStateOf(false) }
-
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis =
-        (todoList.reminder as? Reminder.TimeReminder)?.dateTime?.toEpochSecond(ZoneOffset.UTC)
-            ?.times(1000) ?:
-        // The instant representing the start of the local day in UTC.
-        LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
-    )
-
-    // TODO: setting the time to 11:XX PM or 12:XX PM is buggy. Should be fixed in material3 1.2.0
-    // 11:XX PM -> 12:XX PM
-    // 12:XX PM -> 12:XX AM
-    val timePickerState = rememberTimePickerState(
-        initialHour = (todoList.reminder as? Reminder.TimeReminder)?.dateTime?.hour ?: 18,
-        initialMinute = (todoList.reminder as? Reminder.TimeReminder)?.dateTime?.minute ?: 0
-    )
-
-    val reminderDateTime by rememberUpdatedState(datePickerState.selectedDateMillis?.let {
-        dateAndTimeToDateTime(it, timePickerState.hour, timePickerState.minute)
-    })
-
-    val time = LocalTime.of(timePickerState.hour, timePickerState.minute)
-    val formattedTime = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(time)
-
-    val date = datePickerState.selectedDateMillis?.let {
-        LocalDate.ofInstant(Instant.ofEpochMilli(it), ZoneOffset.UTC)
-    }
-    val formattedDate = date?.let { DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).format(it) }
-
-    // Represent the local time as a UTC timestamp.
-    var currentDateTime by remember { mutableStateOf(LocalDateTime.now()) }
-
-    // Recompose when the current time changes.
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000)
-            currentDateTime = LocalDateTime.now()
-        }
-    }
-
-    // Check if time is in the past.
-    val saveButtonEnabled by remember {
-        derivedStateOf {
-            (reminderDateTime != null) && (reminderDateTime!! > currentDateTime)
-        }
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 8.dp,
-        ) {
-            Column(modifier = Modifier.padding(mediumPadding)) {
-                val title = when (todoList.reminder) {
-                    null -> stringResource(R.string.add_reminder)
-                    else -> stringResource(R.string.edit_reminder)
-                }
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(smallPadding)
-                )
-
-                TextButton(
-                    onClick = { isTimePickerOpen = true }
-                ) {
-                    Icon(
-                        painterResource(R.drawable.time),
-                        contentDescription = stringResource(R.string.time)
-                    )
-                    Spacer(Modifier.width(smallPadding))
-                    Text(text = formattedTime, style = MaterialTheme.typography.bodyMedium)
-                }
-                TextButton(
-                    onClick = { isDatePickerOpen = true }
-                ) {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = stringResource(R.string.date)
-                    )
-                    Spacer(Modifier.width(smallPadding))
-                    Text(
-                        text = formattedDate ?: stringResource(R.string.choose_a_date),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                Spacer(Modifier.height(smallPadding))
-
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.End)
-                ) {
-                    if (todoList.reminder != null) {
-                        TextButton(onClick = onDelete) {
-                            Text(stringResource(R.string.delete))
-                        }
-                    }
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                    Button(
-                        onClick = {
-                            onConfirm(reminderDateTime!!)
-                        },
-                        enabled = saveButtonEnabled
-                    ) {
-                        Text(stringResource(R.string.save))
-                    }
-                }
-            }
-        }
-    }
-
-    if (isDatePickerOpen) {
-        DatePickerDialog(
-            onDismissRequest = { isDatePickerOpen = false },
-            confirmButton = {
-                Button(onClick = { isDatePickerOpen = false }) {
-                    Text(stringResource(R.string.done))
-                }
-            },
-        ) {
-            DatePicker(datePickerState)
-        }
-    }
-
-    if (isTimePickerOpen) {
-        TimePickerDialog(
-            onDismissRequest = { isTimePickerOpen = false },
-            confirmButton = {
-                Button(
-                    onClick = { isTimePickerOpen = false },
-                ) {
-                    Text(stringResource(R.string.done))
-                }
-            }
-        ) {
-            TimePicker(timePickerState)
-        }
-    }
-}
-
-@Composable
-fun TimePickerDialog(
-    onDismissRequest: () -> Unit,
-    confirmButton: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable (ColumnScope.() -> Unit),
-) {
-    Dialog(
-        onDismissRequest = onDismissRequest,
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 8.dp,
-        ) {
-            Column(modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium))) {
-                content()
-
-                Box(Modifier.align(Alignment.End)) {
-                    confirmButton()
-                }
-            }
-        }
-    }
-}
-
 @Preview(device = "id:Nexus 5", showSystemUi = true)
 @Preview(
     device = "id:Nexus 5", showSystemUi = true,
@@ -983,24 +780,6 @@ fun TodoListScreenPreview() {
                 onOpenReminderMenu = {},
                 onReminderUpdated = {},
                 onNavigateBack = {},
-            )
-        }
-    }
-}
-
-@Preview(device = "id:Nexus 5", showSystemUi = true)
-@Composable
-fun ReminderDialogPreview() {
-    TodoTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            ReminderDialog(
-                todoList = TodoList(name = "Shopping", position = 0, reminder = null),
-                onConfirm = {},
-                onDelete = {},
-                onDismiss = {},
             )
         }
     }

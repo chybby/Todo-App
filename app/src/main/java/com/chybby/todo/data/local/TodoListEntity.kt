@@ -29,10 +29,14 @@ data class TodoListEntity(
     @ColumnInfo(name = "reminder_date_time")
     val reminderDateTime: LocalDateTime?,
 
-    @ColumnInfo(name = "reminder_location_lat")
-    val reminderLocationLatitude: Float?,
-    @ColumnInfo(name = "reminder_location_long")
-    val reminderLocationLongitude: Float?,
+    @ColumnInfo(name = "reminder_location_latitude")
+    val reminderLocationLatitude: Double?,
+    @ColumnInfo(name = "reminder_location_longitude")
+    val reminderLocationLongitude: Double?,
+    // Either the search result or the address if the marker was placed on the map.
+    // (or the lat/long if there's no address)
+    @ColumnInfo(name = "reminder_location_description")
+    val reminderLocationDescription: String?,
 
     @ColumnInfo(name = "notification_id")
     val notificationId: Int?,

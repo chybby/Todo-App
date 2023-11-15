@@ -1,9 +1,7 @@
 package com.chybby.todo.data
 
-import java.time.LocalDateTime
-
 interface ReminderRepository {
-    fun createReminder(listId: Long, reminderDateTime: LocalDateTime)
+    fun createReminder(listId: Long, reminder: Reminder)
 
     fun deleteReminder(listId: Long)
 }

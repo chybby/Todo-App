@@ -25,4 +25,11 @@
     <string name="reminder_channel_name">Reminders</string>
     <string name="alarm_permission_rationale_title">Allow alarms</string>
     <string name="alarm_permission_rationale_description">This app requires permission to set alarms. Would you like to grant it?</string>
+    <string name="foreground_location_permission_rationale_title">Allow foreground location access</string>
+    <string name="foreground_location_permission_rationale_description">This app requires permission to access your precise location. Would you like to grant it?</string>
+    <string name="background_location_permission_rationale_title">Allow background location access</string>
+    <string name="background_location_permission_rationale_description">This app requires permission to access your location in the background. On the next screen select the \'%s\' option to grant it.</string>
+    <string name="location">location</string>
+    <string name="choose_a_location">Choose a location</string>
+    <string name="ok">OK</string>
 </resources>

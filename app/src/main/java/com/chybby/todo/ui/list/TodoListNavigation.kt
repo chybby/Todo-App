@@ -39,7 +39,7 @@ fun NavGraphBuilder.todoListScreen(
         deepLinks = listOf(navDeepLink { uriPattern = "$uri/{$todoListIdArg}" }),
         enterTransition = {
             slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Companion.Start,
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
                 animationSpec = tween(500)
             )
         },
@@ -51,7 +51,7 @@ fun NavGraphBuilder.todoListScreen(
         },
         popExitTransition = {
             slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Companion.End,
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
                 animationSpec = tween(500)
             )
         }

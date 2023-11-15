@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import com.chybby.todo.data.Reminder
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDateTime
 
@@ -93,7 +94,41 @@ interface TodoListDao {
     }
 
     @Query("UPDATE todo_list SET reminder_date_time = :dateTime WHERE id = :id")
-    suspend fun updateTodoListReminder(id: Long, dateTime: LocalDateTime?)
+    suspend fun updateTodoListTimeReminder(id: Long, dateTime: LocalDateTime?)
+
+    @Query("UPDATE todo_list SET reminder_location_latitude = :latitude, reminder_location_longitude = :longitude, reminder_location_description = :description WHERE id = :id")
+    suspend fun updateTodoListLocationReminder(
+        id: Long,
+        latitude: Double?,
+        longitude: Double?,
+        description: String?,
+    )
+
+    @Transaction
+    suspend fun updateTodoListReminder(id: Long, reminder: Reminder?) {
+        when (reminder) {
+            is Reminder.TimeReminder -> {
+                updateTodoListTimeReminder(id, reminder.dateTime)
+                updateTodoListLocationReminder(id, null, null, null)
+            }
+
+            is Reminder.LocationReminder -> {
+                updateTodoListLocationReminder(
+                    id,
+                    reminder.location.latLng.latitude,
+                    reminder.location.latLng.longitude,
+                    reminder.location.description
+                )
+                updateTodoListTimeReminder(id, null)
+
+            }
+
+            null -> {
+                updateTodoListTimeReminder(id, null)
+                updateTodoListLocationReminder(id, null, null, null)
+            }
+        }
+    }
 
     @Query("UPDATE todo_list SET notification_id = :notificationId WHERE id = :id")
     suspend fun updateTodoListNotificationId(id: Long, notificationId: Int?)

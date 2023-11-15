@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.time.LocalDateTime
 import javax.inject.Inject
 
 class OfflineTodoListRepository @Inject constructor(
@@ -68,6 +67,7 @@ class OfflineTodoListRepository @Inject constructor(
                 reminderDateTime = null,
                 reminderLocationLatitude = null,
                 reminderLocationLongitude = null,
+                reminderLocationDescription = null,
                 notificationId = null,
             )
         )
@@ -90,30 +90,23 @@ class OfflineTodoListRepository @Inject constructor(
     // Completed items shouldn't have a notification so no need to clear.
     override suspend fun deleteCompleted(id: Long) = todoListDao.deleteCompleted(id)
 
-    override suspend fun editTodoListReminder(id: Long, dateTime: LocalDateTime?) {
-        todoListDao.updateTodoListReminder(id, dateTime)
+    override suspend fun editTodoListReminder(id: Long, reminder: Reminder?) {
+        // TODO: try to create the reminder first. If it fails, don't update the database (and show error to user?)
 
-        if (dateTime != null) {
-            reminderRepository.createReminder(id, dateTime)
+        todoListDao.updateTodoListReminder(id, reminder)
+
+        if (reminder != null) {
+            reminderRepository.createReminder(id, reminder)
         } else {
             reminderRepository.deleteReminder(id)
         }
     }
 
     override suspend fun scheduleExistingReminders() {
-        getTodoLists().map { todoList ->
-            when (todoList.reminder) {
-                is Reminder.TimeReminder -> {
-                    // If the reminder is in the past, the alarm will be triggered immediately.
-                    reminderRepository.createReminder(todoList.id, todoList.reminder.dateTime)
-                }
-
-                is Reminder.LocationReminder -> {
-                    //TODO: recreate geofence.
-                }
-
-                null -> {}
-            }
+        getTodoLists().forEach { todoList ->
+            // If the reminder is time-based and in the past, the alarm will be triggered
+            // immediately.
+            todoList.reminder?.let { reminderRepository.createReminder(todoList.id, it) }
         }
     }
 

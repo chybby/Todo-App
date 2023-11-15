@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters
 import com.chybby.todo.NotificationActionReceiver
 import com.chybby.todo.R
 import com.chybby.todo.TodoApplication
+import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.data.TodoListRepository
@@ -91,8 +92,8 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
         todoList: TodoList,
         todoItems: List<TodoItem>,
     ) {
-        //TODO: Have a look at https://developer.android.com/develop/ui/views/notifications/custom-notification/.
-        //TODO: Update notification icon.
+        // TODO: Have a look at https://developer.android.com/develop/ui/views/notifications/custom-notification/.
+        // TODO: Update notification icon.
 
         // Create a notification for each uncompleted TodoItem.
         for (todoItem in todoItems) {
@@ -121,9 +122,13 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
                 throw IllegalArgumentException("Missing input list id")
             }
 
-            // Delete the reminder from the database. Even if sending the notifications fails,
-            // there's no point keeping a reminder for a time in the past around.
-            todoListRepository.editTodoListReminder(listId, null)
+            val todoList = todoListRepository.getTodoListStreamById(listId).first()
+
+            if (todoList.reminder is Reminder.TimeReminder) {
+                // Delete the reminder from the database. Even if sending the notifications fails,
+                // there's no point keeping a reminder for a time in the past around.
+                todoListRepository.editTodoListReminder(listId, null)
+            }
 
             val notificationManager = NotificationManagerCompat.from(applicationContext)
 
@@ -134,7 +139,6 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
 
             Timber.d("Sending notifications for list with id $listId")
 
-            val todoList = todoListRepository.getTodoListStreamById(listId).first()
             val todoItems = todoListRepository.getTodoItemsStreamByListId(listId).first()
                 .filter { !it.isCompleted }
 
