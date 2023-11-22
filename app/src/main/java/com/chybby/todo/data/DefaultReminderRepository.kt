@@ -94,6 +94,7 @@ class DefaultReminderRepository @Inject constructor(
             .build()
 
         geofencingClient.addGeofences(request, createPendingIntent(listId, 1, mutable = true))
+            .addOnSuccessListener { Timber.d("Added geofence for listId $listId at $latLng") }
             .addOnFailureListener { exception ->
                 Timber.e("Failed to add geofence.")
                 exception.printStackTrace()

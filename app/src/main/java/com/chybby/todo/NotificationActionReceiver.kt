@@ -7,7 +7,6 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.chybby.todo.data.TodoListRepository
 import com.chybby.todo.data.workers.NotificationActionWorker
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -15,9 +14,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class NotificationActionReceiver : BroadcastReceiver() {
-
-    @Inject
-    lateinit var todoListRepository: TodoListRepository
 
     @Inject
     lateinit var workManager: WorkManager
