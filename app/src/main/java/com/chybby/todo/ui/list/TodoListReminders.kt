@@ -69,13 +69,13 @@ import androidx.core.app.ActivityCompat
 import com.chybby.todo.R
 import com.chybby.todo.data.Location
 import com.chybby.todo.data.Reminder
+import com.chybby.todo.rememberMultiplePermissionsStateSafe
+import com.chybby.todo.rememberPermissionStateSafe
 import com.chybby.todo.ui.theme.TodoTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -157,7 +157,7 @@ fun ReminderDialog(
     val backgroundLocationPermissionState = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
         null
     } else {
-        rememberPermissionState(
+        rememberPermissionStateSafe(
             Manifest.permission.ACCESS_BACKGROUND_LOCATION
         ) { granted ->
             if (granted) {
@@ -180,7 +180,7 @@ fun ReminderDialog(
         foregroundLocationPermissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
     }
 
-    val foregroundLocationPermissionsState = rememberMultiplePermissionsState(
+    val foregroundLocationPermissionsState = rememberMultiplePermissionsStateSafe(
         foregroundLocationPermissions
     ) { granted ->
         if (granted.values.all { it }) {
@@ -569,14 +569,23 @@ fun LocationPickerDialog(
                 )
 
                 // TODO: add a slider for changing the radius.
-
-                // TODO: add a cancel button.
-                Box(Modifier.align(Alignment.End)) {
-                    Button(
-                        onClick = { onLocationSelected(selectedLocation) },
-                        enabled = selectedLocation != null,
-                    ) {
-                        Text(stringResource(R.string.done))
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                ) {
+                    Row {
+                        TextButton(
+                            onClick = onDismiss
+                        ) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                        Button(
+                            onClick = { onLocationSelected(selectedLocation) },
+                            enabled = selectedLocation != null,
+                        ) {
+                            Text(stringResource(R.string.done))
+                        }
                     }
                 }
             }

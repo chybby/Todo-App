@@ -84,12 +84,12 @@ import com.chybby.todo.R
 import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
+import com.chybby.todo.rememberPermissionStateSafe
 import com.chybby.todo.ui.isItemWithIndexVisible
 import com.chybby.todo.ui.theme.TodoTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
@@ -134,7 +134,7 @@ fun TodoListScreen(
     val notificationPermissionState = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
         null
     } else {
-        rememberPermissionState(
+        rememberPermissionStateSafe(
             permission = android.Manifest.permission.POST_NOTIFICATIONS
         ) { granted ->
             if (granted) {
