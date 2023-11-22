@@ -1,6 +1,7 @@
 package com.chybby.todo.data
 
 import kotlinx.coroutines.flow.Flow
+import kotlin.reflect.KClass
 
 interface TodoListRepository {
     // Streams.
@@ -31,7 +32,7 @@ interface TodoListRepository {
 
     suspend fun allocateTodoListNotificationId(id: Long): Int
 
-    suspend fun scheduleExistingReminders()
+    suspend fun scheduleExistingReminders(type: KClass<*>)
 
     // TodoItem.
 

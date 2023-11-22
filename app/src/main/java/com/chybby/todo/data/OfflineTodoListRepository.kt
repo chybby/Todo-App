@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import kotlin.reflect.KClass
 
 class OfflineTodoListRepository @Inject constructor(
     private val todoListDao: TodoListDao,
@@ -103,11 +104,13 @@ class OfflineTodoListRepository @Inject constructor(
         }
     }
 
-    override suspend fun scheduleExistingReminders() {
+    override suspend fun scheduleExistingReminders(type: KClass<*>) {
         getTodoLists().forEach { todoList ->
             // If the reminder is time-based and in the past, the alarm will be triggered
             // immediately.
-            todoList.reminder?.let { reminderRepository.createReminder(todoList.id, it) }
+            if (todoList.reminder != null && todoList.reminder::class == type) {
+                reminderRepository.createReminder(todoList.id, todoList.reminder)
+            }
         }
     }
 
