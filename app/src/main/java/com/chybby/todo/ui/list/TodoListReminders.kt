@@ -120,7 +120,6 @@ fun dateAndTimeToDateTime(date: Long, hour: Int, minute: Int): LocalDateTime {
     return LocalDateTime.of(localDate, localTime)
 }
 
-// TODO: test what happens if the reminder goes off while the dialog is open.
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun ReminderDialog(
@@ -506,7 +505,7 @@ fun LocationReminder(
     if (isLocationPickerOpen) {
         LocationPickerDialog(
             location = location,
-            onLocationUpdated = { newLocation ->
+            onLocationSelected = { newLocation ->
                 isLocationPickerOpen = false
                 location = newLocation
                 onReminderUpdated(newLocation?.let { Reminder.LocationReminder(it) })
@@ -529,16 +528,71 @@ fun Address?.getDescription(latLng: LatLng): String {
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationPickerDialog(
     location: Location?,
-    onLocationUpdated: (Location?) -> Unit,
+    onLocationSelected: (Location?) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val smallPadding = dimensionResource(R.dimen.padding_small)
 
     var selectedLocation by remember { mutableStateOf(location) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        DialogProperties()
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 8.dp,
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(smallPadding),
+                modifier = Modifier
+                    .padding(dimensionResource(R.dimen.padding_medium))
+            ) {
+                LocationSearchBox(
+                    selectedLocation = selectedLocation,
+                    onLocationSelected = { newLocation: Location? ->
+                        selectedLocation = newLocation
+                    }
+                )
+
+                LocationPickerMap(
+                    selectedLocation = selectedLocation,
+                    onLocationSelected = { newLocation: Location? ->
+                        selectedLocation = newLocation
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp)
+                )
+
+                // TODO: add a slider for changing the radius.
+
+                // TODO: add a cancel button.
+                Box(Modifier.align(Alignment.End)) {
+                    Button(
+                        onClick = { onLocationSelected(selectedLocation) },
+                        enabled = selectedLocation != null,
+                    ) {
+                        Text(stringResource(R.string.done))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LocationSearchBox(
+    selectedLocation: Location?,
+    onLocationSelected: (location: Location) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
 
     var query by remember(selectedLocation) {
         mutableStateOf(TextFieldValue(selectedLocation?.description ?: ""))
@@ -551,25 +605,19 @@ fun LocationPickerDialog(
         }
     }
 
-    val context = LocalContext.current
-
     val placesClient = if (LocalInspectionMode.current) {
+        // Don't create a places client if only previewing.
         null
     } else {
         remember { Places.createClient(context) }
     }
     val token = remember { AutocompleteSessionToken.newInstance() }
 
-    val geocoder = if (LocalInspectionMode.current) {
-        null
-    } else {
-        remember { Geocoder(context) }
-    }
-
     var results by remember { mutableStateOf<List<AutocompletePrediction>>(listOf()) }
     var expanded by remember { mutableStateOf(false) }
     var isSearchBoxFocused by remember { mutableStateOf(false) }
 
+    // Run a places query on new input after a short delay.
     LaunchedEffect(query.text) {
         delay(PLACES_QUERY_TYPING_DELAY)
 
@@ -591,6 +639,92 @@ fun LocationPickerDialog(
             }
     }
 
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { },
+        modifier = modifier,
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = {
+                if (keepWholeSelection) {
+                    keepWholeSelection = false
+                    query = it.copy(selection = TextRange(0, query.text.length))
+                } else {
+                    query = it
+                }
+            },
+            label = { Text("Search") },
+            leadingIcon = { Icon(Icons.Default.Search, "Search") },
+            colors = ExposedDropdownMenuDefaults.textFieldColors(),
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
+                .onFocusChanged { focusState ->
+                    isSearchBoxFocused = focusState.isFocused
+                    if (focusState.isFocused) {
+                        keepWholeSelection = true
+                        query = query.copy(selection = TextRange(0, query.text.length))
+                    }
+                },
+        )
+
+        if (results.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                results.forEach { prediction ->
+                    val text = prediction.getFullText(null).toString()
+                    DropdownMenuItem(
+                        text = { Text(text) },
+                        onClick = {
+                            query = TextFieldValue(text = text)
+                            focusManager.clearFocus(true)
+                            expanded = false
+
+                            val placeFields = listOf(Place.Field.LAT_LNG)
+
+                            val request = FetchPlaceRequest.newInstance(
+                                prediction.placeId,
+                                placeFields
+                            )
+
+                            placesClient!!.fetchPlace(request)
+                                .addOnSuccessListener { response ->
+                                    response.place.latLng?.let {
+                                        onLocationSelected(Location(it, text))
+                                    }
+                                }
+                                .addOnFailureListener { exception ->
+                                    Timber.w("Error when getting place details.")
+                                    exception.printStackTrace()
+                                }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LocationPickerMap(
+    selectedLocation: Location?,
+    onLocationSelected: (location: Location) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+
+    val geocoder = if (LocalInspectionMode.current) {
+        // Don't create a geocoder if only previewing.
+        null
+    } else {
+        remember { Geocoder(context) }
+    }
+
     val cameraPositionState = rememberCameraPositionState {
         selectedLocation?.let { selectedLocation ->
             position = CameraPosition.fromLatLngZoom(
@@ -599,191 +733,89 @@ fun LocationPickerDialog(
         }
     }
 
-    // Move the camera position to the current location if a location isn't already set.
-    LaunchedEffect(true) {
+    LaunchedEffect(selectedLocation) {
         if (selectedLocation != null) {
-            return@LaunchedEffect
-        }
-
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return@LaunchedEffect
-        }
-
-        LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
-            if (location != null) {
-                cameraPositionState.move(
-                    CameraUpdateFactory.newLatLngZoom(
-                        LatLng(
-                            location.latitude,
-                            location.longitude
-                        ),
-                        MAP_CAMERA_ZOOM
-                    )
+            // Move the camera position to the new selected location.
+            cameraPositionState.move(
+                CameraUpdateFactory.newLatLngZoom(
+                    selectedLocation.latLng,
+                    MAP_CAMERA_ZOOM
                 )
+            )
+        } else {
+            // Move the camera position to the current gps location if a location isn't already set.
+            if (ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return@LaunchedEffect
+            }
+
+            LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    cameraPositionState.move(
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(
+                                location.latitude,
+                                location.longitude
+                            ),
+                            MAP_CAMERA_ZOOM
+                        )
+                    )
+                }
             }
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        DialogProperties()
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 8.dp,
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(smallPadding),
-                modifier = Modifier
-                    .padding(dimensionResource(R.dimen.padding_medium))
-            ) {
-
-                // TODO: split the menu box and the map into separate functions.
-
-                val focusManager = LocalFocusManager.current
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { }) {
-
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = {
-                            if (keepWholeSelection) {
-                                keepWholeSelection = false
-                                query = it.copy(selection = TextRange(0, query.text.length))
-                            } else {
-                                query = it
-                            }
-                        },
-                        label = { Text("Search") },
-                        leadingIcon = { Icon(Icons.Default.Search, "Search") },
-                        colors = ExposedDropdownMenuDefaults.textFieldColors(),
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                            .onFocusChanged { focusState ->
-                                isSearchBoxFocused = focusState.isFocused
-                                if (focusState.isFocused) {
-                                    keepWholeSelection = true
-                                    query = query.copy(selection = TextRange(0, query.text.length))
-                                }
-                            },
-                    )
-
-                    if (results.isNotEmpty()) {
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            results.forEach { prediction ->
-                                val text = prediction.getFullText(null).toString()
-                                DropdownMenuItem(
-                                    text = { Text(text) },
-                                    onClick = {
-                                        query = TextFieldValue(text = text)
-                                        focusManager.clearFocus(true)
-                                        expanded = false
-
-                                        val placeFields = listOf(Place.Field.LAT_LNG)
-
-                                        val request = FetchPlaceRequest.newInstance(
-                                            prediction.placeId,
-                                            placeFields
-                                        )
-
-                                        placesClient!!.fetchPlace(request)
-                                            .addOnSuccessListener { response ->
-                                                response.place.latLng?.let {
-                                                    selectedLocation = Location(
-                                                        it,
-                                                        text
-                                                    )
-                                                    cameraPositionState.position =
-                                                        CameraPosition.fromLatLngZoom(
-                                                            it,
-                                                            MAP_CAMERA_ZOOM
-                                                        )
-                                                }
-
-                                            }
-                                            .addOnFailureListener { exception ->
-                                                Timber.w("Error when getting place details.")
-                                                exception.printStackTrace()
-                                            }
-                                    }
-                                )
-                            }
-                        }
-                    }
+    GoogleMap(
+        properties = MapProperties(isMyLocationEnabled = true),
+        uiSettings = MapUiSettings(
+            mapToolbarEnabled = true,
+            myLocationButtonEnabled = true
+        ),
+        cameraPositionState = cameraPositionState,
+        onMapLongClick = { location ->
+            focusManager.clearFocus()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                geocoder!!.getFromLocation(
+                    location.latitude,
+                    location.longitude,
+                    1
+                ) { addresses ->
+                    val address = addresses.getOrNull(0)
+                    onLocationSelected(Location(location, address.getDescription(location)))
                 }
+            } else {
+                // This deprecated function is only used on older Android versions.
+                @Suppress("DEPRECATION")
+                val address = geocoder!!.getFromLocation(
+                    location.latitude,
+                    location.longitude,
+                    1
+                )?.getOrNull(0)
 
-                GoogleMap(
-                    properties = MapProperties(isMyLocationEnabled = true),
-                    uiSettings = MapUiSettings(
-                        mapToolbarEnabled = true,
-                        myLocationButtonEnabled = true
-                    ),
-                    cameraPositionState = cameraPositionState,
-                    onMapLongClick = { location ->
-                        focusManager.clearFocus()
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            geocoder!!.getFromLocation(
-                                location.latitude,
-                                location.longitude,
-                                1
-                            ) { addresses ->
-                                val address = addresses.getOrNull(0)
-                                selectedLocation =
-                                    Location(location, address.getDescription(location))
-                            }
-                        } else {
-                            val address = geocoder!!.getFromLocation(
-                                location.latitude,
-                                location.longitude,
-                                1
-                            )?.getOrNull(0)
-
-                            selectedLocation = Location(location, address.getDescription(location))
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(400.dp)
-                ) {
-                    selectedLocation?.let { selectedLocation ->
-                        Circle(
-                            center = selectedLocation.latLng,
-                            radius = DEFAULT_GEOFENCE_RADIUS,
-                            strokeColor = MaterialTheme.colorScheme.primary,
-                            fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        )
-
-                        Marker(
-                            state = MarkerState(
-                                position = selectedLocation.latLng
-                            )
-                        )
-                    }
-                }
-
-                // TODO: add a slider for changing the radius.
-
-                // TODO: disable done unless a location is chosen.
-                Box(Modifier.align(Alignment.End)) {
-                    Button(onClick = { onLocationUpdated(selectedLocation) }) {
-                        Text(stringResource(R.string.done))
-                    }
-                }
+                onLocationSelected(Location(location, address.getDescription(location)))
             }
+        },
+        modifier = modifier
+    ) {
+        selectedLocation?.let { selectedLocation ->
+            Circle(
+                center = selectedLocation.latLng,
+                radius = DEFAULT_GEOFENCE_RADIUS,
+                strokeColor = MaterialTheme.colorScheme.primary,
+                fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+            )
+
+            Marker(
+                state = MarkerState(
+                    position = selectedLocation.latLng
+                )
+            )
         }
     }
 }
@@ -959,7 +991,7 @@ fun LocationPickerDialogPreview() {
         ) {
             LocationPickerDialog(
                 location = null,
-                onLocationUpdated = {},
+                onLocationSelected = {},
                 onDismiss = {},
             )
         }
