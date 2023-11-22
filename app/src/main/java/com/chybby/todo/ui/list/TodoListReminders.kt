@@ -55,12 +55,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
@@ -135,7 +137,10 @@ fun ReminderDialog(
     val smallPadding = dimensionResource(R.dimen.padding_small)
     val mediumPadding = dimensionResource(R.dimen.padding_medium)
 
-    val tabTitles = listOf("Time", "Location")
+    val tabTitlesAndIcons = listOf(
+        Pair("Time", ImageVector.vectorResource(R.drawable.time)),
+        Pair("Location", Icons.Default.LocationOn)
+    )
     val timeTabIndex = 0
     val locationTabIndex = 1
     var selectedTab by remember {
@@ -274,10 +279,10 @@ fun ReminderDialog(
                 )
 
                 TabRow(selectedTabIndex = selectedTab) {
-                    tabTitles.forEachIndexed { index, title ->
+                    tabTitlesAndIcons.forEachIndexed { index, (title, icon) ->
                         Tab(
                             text = { Text(title) },
-                            // TODO: icons.
+                            icon = { Icon(icon, null) },
                             selected = selectedTab == index,
                             onClick = {
                                 if (index == locationTabIndex && !requestLocationPermissions(
