@@ -32,6 +32,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -48,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -109,7 +111,9 @@ import kotlin.time.Duration.Companion.seconds
 
 const val MAX_PLACES_RESULTS: Int = 5
 const val MAP_CAMERA_ZOOM: Float = 17f
-const val DEFAULT_GEOFENCE_RADIUS: Double = 100.0
+const val MIN_GEOFENCE_RADIUS: Double = 100.0
+const val MAX_GEOFENCE_RADIUS: Double = 500.0
+const val DEFAULT_GEOFENCE_RADIUS: Double = 200.0
 const val INITIALLY_SELECTED_HOUR: Int = 18
 
 val PLACES_QUERY_TYPING_DELAY: Duration = 300.milliseconds
@@ -508,7 +512,7 @@ fun LocationReminder(
             onLocationSelected = { newLocation ->
                 isLocationPickerOpen = false
                 location = newLocation
-                onReminderUpdated(newLocation?.let { Reminder.LocationReminder(it) })
+                onReminderUpdated(Reminder.LocationReminder(newLocation))
             },
             onDismiss = { isLocationPickerOpen = false }
         )
@@ -527,11 +531,10 @@ fun Address?.getDescription(latLng: LatLng): String {
     }
 }
 
-
 @Composable
 fun LocationPickerDialog(
     location: Location?,
-    onLocationSelected: (Location?) -> Unit,
+    onLocationSelected: (Location) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val smallPadding = dimensionResource(R.dimen.padding_small)
@@ -553,14 +556,14 @@ fun LocationPickerDialog(
             ) {
                 LocationSearchBox(
                     selectedLocation = selectedLocation,
-                    onLocationSelected = { newLocation: Location? ->
+                    onLocationSelected = { newLocation: Location ->
                         selectedLocation = newLocation
                     }
                 )
 
                 LocationPickerMap(
                     selectedLocation = selectedLocation,
-                    onLocationSelected = { newLocation: Location? ->
+                    onLocationSelected = { newLocation: Location ->
                         selectedLocation = newLocation
                     },
                     modifier = Modifier
@@ -568,12 +571,20 @@ fun LocationPickerDialog(
                         .height(400.dp)
                 )
 
-                // TODO: add a slider for changing the radius.
                 Row(
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
                         .fillMaxWidth()
                 ) {
+                    Slider(
+                        value = (selectedLocation?.radius ?: DEFAULT_GEOFENCE_RADIUS).toFloat(),
+                        onValueChange = { newRadius ->
+                            selectedLocation = selectedLocation?.copy(radius = newRadius.toDouble())
+                        },
+                        valueRange = MIN_GEOFENCE_RADIUS.toFloat()..MAX_GEOFENCE_RADIUS.toFloat(),
+                        modifier = Modifier
+                            .weight(1.0f)
+                    )
                     Row {
                         TextButton(
                             onClick = onDismiss
@@ -581,7 +592,7 @@ fun LocationPickerDialog(
                             Text(stringResource(R.string.cancel))
                         }
                         Button(
-                            onClick = { onLocationSelected(selectedLocation) },
+                            onClick = { onLocationSelected(selectedLocation!!) },
                             enabled = selectedLocation != null,
                         ) {
                             Text(stringResource(R.string.done))
@@ -703,7 +714,13 @@ fun LocationSearchBox(
                             placesClient!!.fetchPlace(request)
                                 .addOnSuccessListener { response ->
                                     response.place.latLng?.let {
-                                        onLocationSelected(Location(it, text))
+                                        onLocationSelected(
+                                            Location(
+                                                it,
+                                                selectedLocation?.radius ?: DEFAULT_GEOFENCE_RADIUS,
+                                                text
+                                            )
+                                        )
                                     }
                                 }
                                 .addOnFailureListener { exception ->
@@ -733,6 +750,9 @@ fun LocationPickerMap(
     } else {
         remember { Geocoder(context) }
     }
+
+    // Make sure the closures below always see the updated value.
+    val updatedSelectedLocation by rememberUpdatedState(selectedLocation)
 
     val cameraPositionState = rememberCameraPositionState {
         selectedLocation?.let { selectedLocation ->
@@ -796,7 +816,13 @@ fun LocationPickerMap(
                     1
                 ) { addresses ->
                     val address = addresses.getOrNull(0)
-                    onLocationSelected(Location(location, address.getDescription(location)))
+                    onLocationSelected(
+                        Location(
+                            location,
+                            updatedSelectedLocation?.radius ?: DEFAULT_GEOFENCE_RADIUS,
+                            address.getDescription(location)
+                        )
+                    )
                 }
             } else {
                 // This deprecated function is only used on older Android versions.
@@ -807,7 +833,13 @@ fun LocationPickerMap(
                     1
                 )?.getOrNull(0)
 
-                onLocationSelected(Location(location, address.getDescription(location)))
+                onLocationSelected(
+                    Location(
+                        location,
+                        updatedSelectedLocation?.radius ?: DEFAULT_GEOFENCE_RADIUS,
+                        address.getDescription(location)
+                    )
+                )
             }
         },
         modifier = modifier
@@ -815,7 +847,7 @@ fun LocationPickerMap(
         selectedLocation?.let { selectedLocation ->
             Circle(
                 center = selectedLocation.latLng,
-                radius = DEFAULT_GEOFENCE_RADIUS,
+                radius = selectedLocation.radius,
                 strokeColor = MaterialTheme.colorScheme.primary,
                 fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
             )
@@ -979,6 +1011,7 @@ fun ReminderDialogLocationPreview() {
                 todoListReminder = Reminder.LocationReminder(
                     Location(
                         LatLng(0.0, 0.0),
+                        DEFAULT_GEOFENCE_RADIUS,
                         "The Whitehouse"
                     )
                 ),

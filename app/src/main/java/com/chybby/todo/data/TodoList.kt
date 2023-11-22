@@ -6,6 +6,7 @@ import java.time.LocalDateTime
 
 data class Location(
     val latLng: LatLng,
+    val radius: Double,
     val description: String,
 )
 
@@ -13,7 +14,7 @@ sealed interface Reminder {
     // A date and time with no associated timezone.
     data class TimeReminder(val dateTime: LocalDateTime) : Reminder
 
-    // A latitude and longitude.
+    // A latitude, longitude and radius.
     data class LocationReminder(val location: Location) : Reminder
 }
 

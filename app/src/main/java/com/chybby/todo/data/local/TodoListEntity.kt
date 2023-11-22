@@ -33,6 +33,8 @@ data class TodoListEntity(
     val reminderLocationLatitude: Double?,
     @ColumnInfo(name = "reminder_location_longitude")
     val reminderLocationLongitude: Double?,
+    @ColumnInfo(name = "reminder_location_radius")
+    val reminderLocationRadius: Double?,
     // Either the search result or the address if the marker was placed on the map.
     // (or the lat/long if there's no address)
     @ColumnInfo(name = "reminder_location_description")

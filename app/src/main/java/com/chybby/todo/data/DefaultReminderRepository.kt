@@ -110,8 +110,7 @@ class DefaultReminderRepository @Inject constructor(
             }
 
             is Reminder.LocationReminder -> {
-                // TODO: custom radius
-                createGeofence(listId, reminder.location.latLng, 50f)
+                createGeofence(listId, reminder.location.latLng, reminder.location.radius.toFloat())
                 deleteAlarm(listId)
             }
         }

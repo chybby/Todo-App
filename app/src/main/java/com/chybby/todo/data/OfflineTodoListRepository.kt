@@ -68,6 +68,7 @@ class OfflineTodoListRepository @Inject constructor(
                 reminderLocationLatitude = null,
                 reminderLocationLongitude = null,
                 reminderLocationDescription = null,
+                reminderLocationRadius = null,
                 notificationId = null,
             )
         )

@@ -96,11 +96,12 @@ interface TodoListDao {
     @Query("UPDATE todo_list SET reminder_date_time = :dateTime WHERE id = :id")
     suspend fun updateTodoListTimeReminder(id: Long, dateTime: LocalDateTime?)
 
-    @Query("UPDATE todo_list SET reminder_location_latitude = :latitude, reminder_location_longitude = :longitude, reminder_location_description = :description WHERE id = :id")
+    @Query("UPDATE todo_list SET reminder_location_latitude = :latitude, reminder_location_longitude = :longitude, reminder_location_radius = :radius, reminder_location_description = :description WHERE id = :id")
     suspend fun updateTodoListLocationReminder(
         id: Long,
         latitude: Double?,
         longitude: Double?,
+        radius: Double?,
         description: String?,
     )
 
@@ -109,7 +110,7 @@ interface TodoListDao {
         when (reminder) {
             is Reminder.TimeReminder -> {
                 updateTodoListTimeReminder(id, reminder.dateTime)
-                updateTodoListLocationReminder(id, null, null, null)
+                updateTodoListLocationReminder(id, null, null, null, null)
             }
 
             is Reminder.LocationReminder -> {
@@ -117,6 +118,7 @@ interface TodoListDao {
                     id,
                     reminder.location.latLng.latitude,
                     reminder.location.latLng.longitude,
+                    reminder.location.radius,
                     reminder.location.description
                 )
                 updateTodoListTimeReminder(id, null)
@@ -125,7 +127,7 @@ interface TodoListDao {
 
             null -> {
                 updateTodoListTimeReminder(id, null)
-                updateTodoListLocationReminder(id, null, null, null)
+                updateTodoListLocationReminder(id, null, null, null, null)
             }
         }
     }

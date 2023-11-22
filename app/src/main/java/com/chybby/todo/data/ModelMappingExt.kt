@@ -17,6 +17,7 @@ fun TodoList.toLocal() = TodoListEntity(
     reminderDateTime = if (reminder is Reminder.TimeReminder) reminder.dateTime else null,
     reminderLocationLatitude = if (reminder is Reminder.LocationReminder) reminder.location.latLng.latitude else null,
     reminderLocationLongitude = if (reminder is Reminder.LocationReminder) reminder.location.latLng.longitude else null,
+    reminderLocationRadius = if (reminder is Reminder.LocationReminder) reminder.location.radius else null,
     reminderLocationDescription = if (reminder is Reminder.LocationReminder) reminder.location.description else null,
     notificationId = notificationId,
 )
@@ -55,10 +56,11 @@ fun TodoListEntity.toExternal() = TodoList(
     position = position,
     reminder = if (reminderDateTime != null) {
         Reminder.TimeReminder(reminderDateTime)
-    } else if (reminderLocationLatitude != null && reminderLocationLongitude != null && reminderLocationDescription != null) {
+    } else if (reminderLocationLatitude != null && reminderLocationLongitude != null && reminderLocationRadius != null && reminderLocationDescription != null) {
         Reminder.LocationReminder(
             Location(
                 LatLng(reminderLocationLatitude, reminderLocationLongitude),
+                reminderLocationRadius,
                 reminderLocationDescription
             )
         )
