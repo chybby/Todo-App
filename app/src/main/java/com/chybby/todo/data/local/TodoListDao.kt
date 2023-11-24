@@ -6,14 +6,11 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.chybby.todo.data.Reminder
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.LocalDateTime
 
 @Dao
 interface TodoListDao {
-
-    // TODO: look into distinctUntilChanged.
-    // TODO: simplify the interface here
-
     // Get
 
     @Query("SELECT * FROM todo_list ORDER BY position")
@@ -22,20 +19,16 @@ interface TodoListDao {
     @Query("SELECT * FROM todo_list ORDER BY position")
     suspend fun getTodoLists(): List<TodoListEntity>
 
-    @Query("SELECT notification_id FROM todo_list WHERE id = :id")
-    suspend fun getTodoListNotificationId(id: Long): Int?
-
-    @Query("SELECT notification_id FROM todo_item WHERE id = :id")
-    suspend fun getTodoItemNotificationId(id: Long): Int?
-
     @Query("SELECT * FROM todo_list WHERE id = :id")
-    fun observeTodoListById(id: Long): Flow<TodoListEntity>
+    fun observeTodoListByIdRaw(id: Long): Flow<TodoListEntity>
+
+    fun observeTodoListById(id: Long) = observeTodoListByIdRaw(id).distinctUntilChanged()
 
     @Query("SELECT * FROM todo_item WHERE list_id = :listId ORDER BY position")
-    fun observeTodoItemsByListId(listId: Long): Flow<List<TodoItemEntity>>
+    fun observeTodoItemsByListIdRaw(listId: Long): Flow<List<TodoItemEntity>>
 
-    @Query("SELECT * FROM todo_item WHERE id = :id LIMIT 1")
-    suspend fun getTodoItem(id: Long): TodoItemEntity
+    fun observeTodoItemsByListId(listId: Long) =
+        observeTodoItemsByListIdRaw(listId).distinctUntilChanged()
 
     @Query("SELECT position FROM todo_list ORDER BY position DESC LIMIT 1")
     suspend fun getLastListPosition(): Int
@@ -180,12 +173,12 @@ interface TodoListDao {
     @Query("DELETE from todo_item WHERE id = :id")
     suspend fun deleteTodoItem(id: Long)
 
+    @Query("DELETE from todo_item WHERE list_id = :listId AND is_completed")
+    suspend fun deleteCompletedTodoItems(listId: Long)
+
     @Query("DELETE from notification WHERE id = :id")
     suspend fun deleteNotification(id: Int)
 
     @Query("DELETE from notification")
     suspend fun deleteAllNotifications()
-
-    @Query("DELETE from todo_item WHERE list_id = :listId AND is_completed")
-    suspend fun deleteCompleted(listId: Long)
 }

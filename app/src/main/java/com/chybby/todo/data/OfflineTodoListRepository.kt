@@ -56,7 +56,8 @@ class OfflineTodoListRepository @Inject constructor(
             }
         }
 
-    override suspend fun getTodoItem(id: Long): TodoItem = todoListDao.getTodoItem(id).toExternal()
+    override suspend fun getTodoItem(id: Long): TodoItem =
+        todoListDao.getTodoItemById(id).toExternal()
 
     // TodoList.
 
@@ -90,7 +91,7 @@ class OfflineTodoListRepository @Inject constructor(
     }
 
     // Completed items shouldn't have a notification so no need to clear.
-    override suspend fun deleteCompleted(id: Long) = todoListDao.deleteCompleted(id)
+    override suspend fun deleteCompleted(id: Long) = todoListDao.deleteCompletedTodoItems(id)
 
     override suspend fun editTodoListReminder(id: Long, reminder: Reminder?) {
         // TODO: try to create the reminder first. If it fails, don't update the database (and show error to user?)
