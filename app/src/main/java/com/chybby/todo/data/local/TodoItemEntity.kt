@@ -31,11 +31,11 @@ data class TodoItemEntity(
     @ColumnInfo(name = "is_completed")
     val isCompleted: Boolean,
     // TODO: index
-    @ColumnInfo(name = "list_id")
+    @ColumnInfo(name = "list_id", index = true)
     val listId: Long,
     // Where this TodoItem is positioned relative to other TodoItems in the same TodoList.
     val position: Int,
 
-    @ColumnInfo(name = "notification_id")
+    @ColumnInfo(name = "notification_id", index = true)
     val notificationId: Int?,
 )
