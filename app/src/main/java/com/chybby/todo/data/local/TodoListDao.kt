@@ -11,7 +11,8 @@ import java.time.LocalDateTime
 @Dao
 interface TodoListDao {
 
-    //TODO: look into distinctUntilChanged.
+    // TODO: look into distinctUntilChanged.
+    // TODO: simplify the interface here
 
     // Get
 
