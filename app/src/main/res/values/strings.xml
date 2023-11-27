@@ -32,4 +32,6 @@
     <string name="location">location</string>
     <string name="choose_a_location">Choose a location</string>
     <string name="ok">OK</string>
+    <string name="time_reminder">Time reminder</string>
+    <string name="location_reminder">Location reminder</string>
 </resources>

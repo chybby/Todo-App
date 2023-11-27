@@ -30,7 +30,6 @@ data class TodoItemEntity(
     val summary: String,
     @ColumnInfo(name = "is_completed")
     val isCompleted: Boolean,
-    // TODO: index
     @ColumnInfo(name = "list_id", index = true)
     val listId: Long,
     // Where this TodoItem is positioned relative to other TodoItems in the same TodoList.

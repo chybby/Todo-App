@@ -17,12 +17,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -65,6 +68,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -960,6 +964,60 @@ fun BackgroundLocationPermissionRationaleDialog(
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReminderInfo(reminder: Reminder, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val smallPadding = dimensionResource(R.dimen.padding_small)
+    
+    Card(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        modifier = modifier
+            .wrapContentSize(Alignment.TopStart),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(smallPadding),
+            modifier = Modifier
+                .padding(smallPadding)
+        ) {
+            when (reminder) {
+                is Reminder.TimeReminder -> {
+                    Icon(
+                        painterResource(R.drawable.time),
+                        stringResource(R.string.time_reminder),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+
+                    Text(
+                        text = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT)
+                            .format(reminder.dateTime),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+
+                is Reminder.LocationReminder -> {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        stringResource(R.string.location_reminder),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+
+                    Text(
+                        text = reminder.location.description,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+        }
+    }
+}
+
+
 @Preview(device = "id:Nexus 5", showSystemUi = true)
 @Composable
 fun ReminderDialogPreview() {
@@ -1040,6 +1098,44 @@ fun LocationPickerDialogPreview() {
                 location = null,
                 onLocationSelected = {},
                 onDismiss = {},
+            )
+        }
+    }
+}
+
+@Preview(device = "id:Nexus 5", apiLevel = 33)
+@Composable
+fun TimeReminderInfoPreview() {
+    TodoTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            ReminderInfo(
+                Reminder.TimeReminder(LocalDateTime.of(2023, 12, 12, 10, 0)),
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview(device = "id:Nexus 5", apiLevel = 33)
+@Composable
+fun LocationReminderInfoPreview() {
+    TodoTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            ReminderInfo(
+                Reminder.LocationReminder(
+                    Location(
+                        LatLng(0.0, 0.0),
+                        100.0,
+                        "Sydney, Australia"
+                    )
+                ),
+                onClick = {},
             )
         }
     }

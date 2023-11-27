@@ -9,7 +9,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.chybby.todo.R
+import com.chybby.todo.data.Location
 import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
@@ -91,6 +92,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import org.burnoutcrew.reorderable.ReorderableItem
@@ -243,17 +245,17 @@ fun TodoListScreen(
         },
         modifier = modifier
     ) { contentPadding ->
-        TodoItemsColumn(
-            todoItems = uiState.todoItems,
+        TodoListScreenContent(
+            uiState = uiState,
             onTodoItemAdded = onTodoItemAdded,
             onSummaryChanged = onSummaryChanged,
             onCompleted = onCompleted,
             onMoveTodoItem = onMoveTodoItem,
             onDelete = onDelete,
             onDeleteCompleted = onDeleteCompleted,
-            contentPadding = contentPadding,
+            onOpenReminderMenu = onOpenReminderMenu,
             modifier = Modifier
-                .fillMaxSize()
+                .padding(contentPadding)
         )
     }
 
@@ -310,6 +312,53 @@ fun requestAlarmPermissions(context: Context) {
 }
 
 @Composable
+fun TodoListScreenContent(
+    uiState: TodoListScreenUiState,
+    onTodoItemAdded: (afterPosition: Int?) -> Unit,
+    onSummaryChanged: (Long, String) -> Unit,
+    onCompleted: (Long, Boolean) -> Unit,
+    onMoveTodoItem: (Int, Int) -> Unit,
+    onDelete: (Long) -> Unit,
+    onDeleteCompleted: () -> Unit,
+    onOpenReminderMenu: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val smallPadding = dimensionResource(R.dimen.padding_small)
+
+    Column(
+        modifier = modifier
+    ) {
+        if (uiState.todoList.reminder != null) {
+            Box(
+                contentAlignment = Alignment.CenterEnd,
+                modifier = Modifier
+                    .fillMaxWidth(0.75f)
+                    .align(Alignment.End)
+            ) {
+                ReminderInfo(
+                    reminder = uiState.todoList.reminder,
+                    onClick = { onOpenReminderMenu(true) },
+                    modifier = Modifier
+                        .padding(horizontal = smallPadding)
+                )
+            }
+        }
+
+        TodoItemsColumn(
+            todoItems = uiState.todoItems,
+            onTodoItemAdded = onTodoItemAdded,
+            onSummaryChanged = onSummaryChanged,
+            onCompleted = onCompleted,
+            onMoveTodoItem = onMoveTodoItem,
+            onDelete = onDelete,
+            onDeleteCompleted = onDeleteCompleted,
+            modifier = Modifier
+                .fillMaxSize()
+        )
+    }
+}
+
+@Composable
 fun TodoItemsColumn(
     todoItems: List<TodoItem>,
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
@@ -318,7 +367,6 @@ fun TodoItemsColumn(
     onMoveTodoItem: (Int, Int) -> Unit,
     onDelete: (Long) -> Unit,
     onDeleteCompleted: () -> Unit,
-    contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
     val smallPadding = dimensionResource(R.dimen.padding_small)
@@ -352,7 +400,6 @@ fun TodoItemsColumn(
 
     LazyColumn(
         state = state.listState,
-        contentPadding = contentPadding,
         modifier = modifier
             .reorderable(state)
     ) {
@@ -451,7 +498,8 @@ fun TodoItemsColumn(
                 ) {
                     Icon(
                         Icons.Default.Delete,
-                        stringResource(R.string.delete_all_completed_items)
+                        stringResource(R.string.delete_all_completed_items),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -646,6 +694,7 @@ fun TodoItem(
                     Icon(
                         painterResource(R.drawable.drag_indicator),
                         contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .detectReorder(reorderableLazyListState)
                             .padding(dimensionResource(R.dimen.padding_small))
@@ -730,7 +779,13 @@ fun TodoListScreenPreview() {
                         id = 0,
                         name = "Shopping",
                         position = 0,
-                        reminder = null
+                        reminder = Reminder.LocationReminder(
+                            Location(
+                                LatLng(0.0, 0.0),
+                                0.0,
+                                "Local Supermarket"
+                            )
+                        )
                     ),
                     todoItems = persistentListOf(
                         TodoItem(

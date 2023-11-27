@@ -1,11 +1,13 @@
 package com.chybby.todo.ui.home
 
+import android.content.res.Configuration
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,8 +50,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.chybby.todo.R
+import com.chybby.todo.data.Location
+import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoList
+import com.chybby.todo.ui.list.ReminderInfo
 import com.chybby.todo.ui.theme.TodoTheme
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.ReorderableLazyListState
@@ -70,7 +76,7 @@ fun HomeScreen(
         return
     }
 
-    val paddingSmall = dimensionResource(id = R.dimen.padding_small)
+    val smallPadding = dimensionResource(id = R.dimen.padding_small)
 
     LaunchedEffect(uiState.newTodoListId) {
         if (uiState.newTodoListId != null) {
@@ -107,10 +113,10 @@ fun HomeScreen(
         LazyColumn(
             state = state.listState,
             contentPadding = contentPadding,
-            verticalArrangement = spacedBy(paddingSmall),
+            verticalArrangement = spacedBy(smallPadding),
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingSmall)
+                .padding(smallPadding)
                 .reorderable(state)
         ) {
             items(todoLists, key = { it.id }) { todoList ->
@@ -158,7 +164,6 @@ fun ConfirmDeleteDialog(
     )
 }
 
-// TODO: show reminder information.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoList(
@@ -168,7 +173,7 @@ fun TodoList(
     reorderableLazyListState: ReorderableLazyListState,
     modifier: Modifier = Modifier,
 ) {
-    val paddingSmall = dimensionResource(id = R.dimen.padding_small)
+    val smallPadding = dimensionResource(id = R.dimen.padding_small)
 
     var deleteDialogOpen by remember { mutableStateOf(false) }
 
@@ -258,18 +263,30 @@ fun TodoList(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(smallPadding)
                 ) {
-                    Text(
-                        text = todoList.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier
-                            .padding(paddingSmall)
-                    )
+                    Column(
+                        verticalArrangement = spacedBy(smallPadding)
+                    ) {
+                        Text(
+                            text = todoList.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+
+                        if (todoList.reminder != null) {
+                            ReminderInfo(
+                                reminder = todoList.reminder,
+                                onClick = { /* TODO: make this clickable to change the reminder. */ },
+                                modifier = Modifier
+                                    .fillMaxWidth(0.75f)
+                            )
+                        }
+                    }
+
                     Icon(
                         painterResource(R.drawable.drag_indicator),
                         contentDescription = null,
                         modifier = Modifier
-                            .padding(paddingSmall)
                             .detectReorder(reorderableLazyListState)
                     )
                 }
@@ -279,6 +296,10 @@ fun TodoList(
 }
 
 @Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(
+    device = "id:Nexus 5", showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
 @Composable
 fun HomeScreenPreview() {
     TodoTheme {
@@ -289,9 +310,18 @@ fun HomeScreenPreview() {
             HomeScreen(
                 uiState = HomeScreenUiState(
                     listOf(
-                        TodoList(name = "Shopping", position = 0),
-                        TodoList(name = "Clothes", position = 1),
-                        TodoList(name = "Books to Read", position = 2),
+                        TodoList(id = 0, name = "Shopping", position = 0),
+                        TodoList(
+                            id = 1, name = "Clothes", position = 1,
+                            reminder = Reminder.LocationReminder(
+                                Location(
+                                    LatLng(0.0, 0.0),
+                                    0.0,
+                                    "Fancy Dress Store",
+                                )
+                            )
+                        ),
+                        TodoList(id = 2, name = "Books to Read", position = 2),
                     ),
                     newTodoListId = null,
                 ),
