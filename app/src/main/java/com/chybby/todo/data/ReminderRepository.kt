@@ -1,7 +1,7 @@
 package com.chybby.todo.data
 
 interface ReminderRepository {
-    fun createReminder(listId: Long, reminder: Reminder)
+    suspend fun createReminder(listId: Long, reminder: Reminder): Result<Unit>
 
-    fun deleteReminder(listId: Long)
+    suspend fun deleteReminder(listId: Long): Result<Unit>
 }

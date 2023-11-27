@@ -14,6 +14,7 @@ import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -44,19 +45,17 @@ class DefaultReminderRepository @Inject constructor(
         )
     }
 
-    private fun createAlarm(listId: Long, dateTime: LocalDateTime) {
-        // TODO: this function should probably return an error value.
-
+    private fun createAlarm(listId: Long, dateTime: LocalDateTime): Result<Unit> {
         if (alarmManager == null) {
             Timber.e("AlarmManager is null")
-            return
+            return Result.failure(IllegalStateException())
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
             Timber.w("SCHEDULE_EXACT_ALARM permission missing")
             // When the permission is granted, AlarmReceiver will attempt to set alarms for all
             // saved reminders, so this will run again then.
-            return
+            return Result.failure(IllegalStateException())
         }
 
         Timber.d("Setting alarm for listId $listId at $dateTime")
@@ -66,19 +65,19 @@ class DefaultReminderRepository @Inject constructor(
             dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
             createPendingIntent(listId, 0)
         )
+
+        return Result.success(Unit)
     }
 
-    private fun createGeofence(listId: Long, latLng: LatLng, radius: Float) {
-        // TODO: this function should probably return an error value.
-
+    private suspend fun createGeofence(listId: Long, latLng: LatLng, radius: Float): Result<Unit> {
         if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Timber.w("ACCESS_FINE_LOCATION permission missing")
-            return
+            return Result.failure(IllegalStateException())
         }
 
         if (context.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Timber.w("ACCESS_BACKGROUND_LOCATION permission missing")
-            return
+            return Result.failure(IllegalStateException())
         }
 
         val geofence = Geofence.Builder()
@@ -93,26 +92,45 @@ class DefaultReminderRepository @Inject constructor(
             .addGeofence(geofence)
             .build()
 
-        geofencingClient.addGeofences(request, createPendingIntent(listId, 1, mutable = true))
-            .addOnSuccessListener { Timber.d("Added geofence for listId $listId at $latLng") }
-            .addOnFailureListener { exception ->
-                Timber.e("Failed to add geofence.")
-                exception.printStackTrace()
-            }
+        try {
+            geofencingClient.addGeofences(request, createPendingIntent(listId, 1, mutable = true))
+                .await()
+        } catch (e: Exception) {
+            Timber.e("Failed to add geofence.")
+            Timber.e(e)
+            return Result.failure(e)
+        }
+
+        Timber.d("Added geofence for listId $listId at $latLng")
+        return Result.success(Unit)
     }
 
-    override fun createReminder(listId: Long, reminder: Reminder) {
-        // TODO: this function should probably return an error value.
-
+    override suspend fun createReminder(listId: Long, reminder: Reminder): Result<Unit> {
         when (reminder) {
             is Reminder.TimeReminder -> {
-                createAlarm(listId, reminder.dateTime)
-                deleteGeofence(listId)
+                var result = createAlarm(listId, reminder.dateTime)
+                if (result.isFailure) {
+                    return result
+                }
+                result = deleteGeofence(listId)
+                if (result.isFailure) {
+                    deleteAlarm(listId)
+                    return result
+                }
+                return result
             }
 
             is Reminder.LocationReminder -> {
-                createGeofence(listId, reminder.location.latLng, reminder.location.radius.toFloat())
+                val result = createGeofence(
+                    listId,
+                    reminder.location.latLng,
+                    reminder.location.radius.toFloat()
+                )
+                if (result.isFailure) {
+                    return result
+                }
                 deleteAlarm(listId)
+                return Result.success(Unit)
             }
         }
     }
@@ -121,16 +139,20 @@ class DefaultReminderRepository @Inject constructor(
         alarmManager?.cancel(createPendingIntent(listId, 0))
     }
 
-    private fun deleteGeofence(listId: Long) {
-        geofencingClient.removeGeofences(listOf(listId.toString()))
-            .addOnFailureListener { exception ->
-                Timber.e("Failed to remove geofence.")
-                exception.printStackTrace()
-            }
+    private suspend fun deleteGeofence(listId: Long): Result<Unit> {
+        try {
+            geofencingClient.removeGeofences(listOf(listId.toString())).await()
+        } catch (e: Exception) {
+            Timber.e("Failed to remove geofence.")
+            Timber.e(e)
+            return Result.failure(e)
+        }
+
+        return Result.success(Unit)
     }
 
-    override fun deleteReminder(listId: Long) {
+    override suspend fun deleteReminder(listId: Long): Result<Unit> {
         deleteAlarm(listId)
-        deleteGeofence(listId)
+        return deleteGeofence(listId)
     }
 }

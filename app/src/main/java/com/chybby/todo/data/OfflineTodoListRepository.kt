@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 import kotlin.reflect.KClass
 
@@ -83,25 +84,31 @@ class OfflineTodoListRepository @Inject constructor(
         todoListDao.updateTodoListName(id, name)
 
     override suspend fun deleteTodoList(id: Long) {
+        val result = reminderRepository.deleteReminder(id)
+        if (result.isFailure) {
+            Timber.e("Failed to delete reminder.")
+            Timber.e(result.exceptionOrNull())
+            return
+        }
         todoListDao.observeTodoItemsByListId(id).first().map { todoItem ->
             clearNotificationForItem(todoItem.id)
         }
         todoListDao.deleteTodoList(id)
-        reminderRepository.deleteReminder(id)
     }
 
     // Completed items shouldn't have a notification so no need to clear.
     override suspend fun deleteCompleted(id: Long) = todoListDao.deleteCompletedTodoItems(id)
 
     override suspend fun editTodoListReminder(id: Long, reminder: Reminder?) {
-        // TODO: try to create the reminder first. If it fails, don't update the database (and show error to user?)
-
-        todoListDao.updateTodoListReminder(id, reminder)
-
-        if (reminder != null) {
+        // Try to create/delete the reminder first as it can fail.
+        val result = if (reminder != null) {
             reminderRepository.createReminder(id, reminder)
         } else {
             reminderRepository.deleteReminder(id)
+        }
+
+        if (result.isSuccess) {
+            todoListDao.updateTodoListReminder(id, reminder)
         }
     }
 
@@ -110,7 +117,11 @@ class OfflineTodoListRepository @Inject constructor(
             // If the reminder is time-based and in the past, the alarm will be triggered
             // immediately.
             if (todoList.reminder != null && todoList.reminder::class == type) {
-                reminderRepository.createReminder(todoList.id, todoList.reminder)
+                val result = reminderRepository.createReminder(todoList.id, todoList.reminder)
+                if (result.isFailure) {
+                    Timber.e("Failed to reschedule reminder.")
+                    Timber.e(result.exceptionOrNull())
+                }
             }
         }
     }
