@@ -69,7 +69,7 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
             )
 
         return NotificationCompat.Builder(applicationContext, TodoApplication.REMINDER_CHANNEL_ID)
-            .setSmallIcon(R.drawable.notification_icon)
+            .setSmallIcon(R.drawable.todo_notification)
             .setContentTitle(todoItem.summary)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setGroup(groupKey)
@@ -177,7 +177,7 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
             }
 
             return NotificationCompat.Builder(context, TodoApplication.REMINDER_CHANNEL_ID)
-                .setSmallIcon(R.drawable.notification_icon)
+                .setSmallIcon(R.drawable.todo_notification)
                 .setContentTitle(todoList.name)
                 .setStyle(inboxStyle)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)

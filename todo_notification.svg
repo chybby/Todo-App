@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="108"
+   height="108"
+   viewBox="0 0 108 108"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3 (0e150ed6c4, 2023-07-21)"
+   sodipodi:docname="todo_notification.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="false"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="true"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="px"
+     labelstyle="default"
+     showguides="true"
+     showgrid="true"
+     inkscape:lockguides="false"
+     inkscape:zoom="4.8578386"
+     inkscape:cx="11.321908"
+     inkscape:cy="46.625674"
+     inkscape:window-width="2560"
+     inkscape:window-height="1369"
+     inkscape:window-x="1072"
+     inkscape:window-y="184"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <sodipodi:guide
+       position="18,108"
+       orientation="-1,0"
+       id="guide4"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="90,108"
+       orientation="-1,0"
+       id="guide5"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="0,90"
+       orientation="0,1"
+       id="guide6"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+    <sodipodi:guide
+       position="0,18"
+       orientation="0,1"
+       id="guide7"
+       inkscape:locked="false"
+       inkscape:label=""
+       inkscape:color="rgb(0,134,229)" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1">
+    <inkscape:path-effect
+       effect="offset"
+       id="path-effect1"
+       is_visible="true"
+       lpeversion="1.2"
+       linejoin_type="miter"
+       unit="mm"
+       offset="0.9"
+       miter_limit="4"
+       attempt_force_join="false"
+       update_on_knot_move="true" />
+    <inkscape:path-effect
+       effect="offset"
+       id="path-effect24"
+       is_visible="true"
+       lpeversion="1.2"
+       linejoin_type="miter"
+       unit="mm"
+       offset="0"
+       miter_limit="4"
+       attempt_force_join="false"
+       update_on_knot_move="true" />
+    <inkscape:path-effect
+       effect="bool_op"
+       operand-path=""
+       id="path-effect11"
+       is_visible="true"
+       lpeversion="1"
+       operation="diff"
+       swap-operands="false"
+       filltype-this="from-curve"
+       filter=""
+       filltype-operand="from-curve" />
+    <filter
+       id="selectable_hidder_filter"
+       width="1"
+       height="1"
+       x="0"
+       y="0"
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="LPE boolean visibility">
+      <feComposite
+         id="boolops_hidder_primitive"
+         result="composite1"
+         operator="arithmetic"
+         in2="SourceGraphic"
+         in="BackgroundImage" />
+    </filter>
+    <inkscape:path-effect
+       effect="bool_op"
+       operand-path=""
+       id="path-effect10"
+       is_visible="true"
+       lpeversion="1"
+       operation="diff"
+       swap-operands="false"
+       filltype-this="from-curve"
+       filter=""
+       filltype-operand="from-curve" />
+    <inkscape:path-effect
+       effect="mirror_symmetry"
+       start_point="-24.982155,69.667955"
+       end_point="-24.982155,29.575313"
+       center_point="-24.982155,49.621634"
+       id="path-effect8"
+       is_visible="true"
+       lpeversion="1.2"
+       lpesatellites=""
+       mode="free"
+       discard_orig_path="false"
+       fuse_paths="true"
+       oposite_fuse="false"
+       split_items="false"
+       split_open="false"
+       link_styles="false" />
+    <inkscape:path-effect
+       effect="mirror_symmetry"
+       start_point="-24.982155,69.667955"
+       end_point="-24.982155,29.575313"
+       center_point="-24.982155,49.621634"
+       id="path-effect8-1"
+       is_visible="true"
+       lpeversion="1.2"
+       lpesatellites=""
+       mode="free"
+       discard_orig_path="false"
+       fuse_paths="true"
+       oposite_fuse="false"
+       split_items="false"
+       split_open="false"
+       link_styles="false" />
+  </defs>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="Bell"
+     style="display:none">
+    <path
+       style="fill:#a08eef;fill-opacity:1;stroke:#d4ff01;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       d="m -24.982422,36.378906 c -4.050155,0.0012 -10.394531,0.977676 -10.394531,9.083985 v 10.777343 c -3.320474,3.233095 -6.406741,3.783673 0,5.644532 9.005051,2.615545 10.291582,1.017294 10.394531,0.857421 0.10295,0.159873 1.38948,1.758124 10.394531,-0.857421 6.406741,-1.860859 3.320474,-2.411437 0,-5.644532 V 45.462891 c 0,-8.106309 -6.344375,-9.082801 -10.394531,-9.083985 z"
+       id="path8"
+       sodipodi:nodetypes="cszcsc"
+       inkscape:original-d="M -35.376091,56.239628 V 45.463421 c 0,-8.111247 6.351496,-9.08397 10.401324,-9.08397 4.049828,0 0,26.350516 0,26.350516 0,0 -0.94078,1.902 -10.401324,-0.845845 -6.406747,-1.86086 -3.320477,-2.411396 0,-5.644494 z"
+       inkscape:path-effect="#path-effect8" />
+    <circle
+       style="fill:#a08eef;fill-opacity:1;stroke:#d4ff01;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       id="path9"
+       cx="-24.982422"
+       cy="64.450722"
+       r="2.6316531" />
+    <circle
+       style="fill:#a08eef;fill-opacity:1;stroke:#d4ff01;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       id="path10"
+       cx="-24.982422"
+       cy="35.828129"
+       r="2.2903605" />
+  </g>
+  <g
+     inkscape:label="Foreground"
+     inkscape:groupmode="layer"
+     id="layer1"
+     style="stroke:#5ff2c2;stroke-opacity:1;fill:#5ff2c2;fill-opacity:1;paint-order:normal;stroke-linecap:butt;stroke-linejoin:round;stroke-width:0;stroke-dasharray:none">
+    <path
+       id="path8-6"
+       style="fill:#5ff2c2;fill-opacity:1;stroke:#5ff2c2;stroke-width:0;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       d="M 54.001953 1.28125 C 48.700118 1.2796826 44.37619 5.3112135 43.908203 10.494141 C 32.35807 12.597444 20.033203 19.617371 20.033203 39.75 L 20.033203 69.939453 C 18.550593 71.307811 17.086485 72.550308 15.734375 73.648438 C 12.394181 76.361209 8.3282122 79.169519 9.1523438 83.242188 C 9.9329617 87.099822 14.837712 89.079217 22.486328 91.300781 C 31.511959 93.922306 38.06352 95.162424 42.855469 95.603516 C 42.867943 101.76473 47.838036 106.72147 54 106.71875 C 60.159109 106.71731 65.123182 101.7607 65.136719 95.603516 C 69.929356 95.163074 76.48288 93.923806 85.513672 91.300781 C 93.162289 89.079217 98.067038 87.099822 98.847656 83.242188 C 99.671788 79.169519 95.60582 76.361209 92.265625 73.648438 C 90.913515 72.550308 89.449408 71.307811 87.966797 69.939453 L 87.966797 39.75 C 87.966797 19.617371 75.641929 12.597443 64.091797 10.494141 C 63.627439 5.3148269 59.30451 1.2797346 54.001953 1.28125 z M 75.587891 52.128906 C 76.572859 52.145179 77.527411 52.501597 78.285156 53.144531 C 80.085111 54.672257 80.307057 57.368341 78.78125 59.169922 L 64.152344 76.427734 L 57.263672 84.554688 C 55.554865 86.570419 52.445135 86.570419 50.736328 84.554688 L 42.013672 74.263672 C 40.484838 72.461431 40.706902 69.760519 42.509766 68.232422 C 44.312007 66.703589 47.012917 66.925653 48.541016 68.728516 L 54 75.175781 L 72.253906 53.640625 C 72.987146 52.775351 74.033771 52.236265 75.164062 52.142578 C 75.305543 52.130873 75.447181 52.126582 75.587891 52.128906 z " />
+  </g>
+</svg>
