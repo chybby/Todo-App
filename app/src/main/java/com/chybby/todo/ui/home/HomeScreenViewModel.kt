@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.data.TodoListRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,18 +23,28 @@ class HomeScreenViewModel @Inject constructor(
 ) : ViewModel() {
 
     private var _newTodoListId: Long? by mutableStateOf(null)
+    private var _reminderMenuOpenForListId: Long? by mutableStateOf(null)
 
     val uiState: StateFlow<HomeScreenUiState> = combine(
         snapshotFlow { _newTodoListId },
+        snapshotFlow { _reminderMenuOpenForListId },
         todoListRepository.todoListsStream,
-    ) { newTodoListId, todoLists ->
-        HomeScreenUiState(todoLists, newTodoListId)
+    ) { newTodoListId, reminderMenuOpenForListId, todoLists ->
+        HomeScreenUiState(todoLists, newTodoListId, reminderMenuOpenForListId)
     }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            HomeScreenUiState(listOf(), null, true),
+            HomeScreenUiState(listOf(), null, null, true),
         )
+
+    fun openReminderMenu(listId: Long?) {
+        _reminderMenuOpenForListId = listId
+    }
+
+    fun editReminder(listId: Long, reminder: Reminder?) = viewModelScope.launch {
+        todoListRepository.editTodoListReminder(listId, reminder)
+    }
 
     fun addTodoList() = viewModelScope.launch {
         _newTodoListId = todoListRepository.addTodoList()
@@ -60,5 +71,6 @@ class HomeScreenViewModel @Inject constructor(
 data class HomeScreenUiState(
     val todoLists: List<TodoList>,
     val newTodoListId: Long?,
+    val reminderMenuOpenForListId: Long?,
     val loading: Boolean = false,
 )

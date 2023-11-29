@@ -1,4 +1,4 @@
-package com.chybby.todo.ui.list
+package com.chybby.todo.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -968,7 +968,7 @@ fun BackgroundLocationPermissionRationaleDialog(
 @Composable
 fun ReminderInfo(reminder: Reminder, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val smallPadding = dimensionResource(R.dimen.padding_small)
-    
+
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.small,

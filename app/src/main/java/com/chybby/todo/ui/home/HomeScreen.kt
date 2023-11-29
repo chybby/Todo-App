@@ -53,7 +53,8 @@ import com.chybby.todo.R
 import com.chybby.todo.data.Location
 import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoList
-import com.chybby.todo.ui.list.ReminderInfo
+import com.chybby.todo.ui.ReminderDialog
+import com.chybby.todo.ui.ReminderInfo
 import com.chybby.todo.ui.theme.TodoTheme
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.launch
@@ -70,6 +71,8 @@ fun HomeScreen(
     onMoveTodoList: (from: Int, to: Int) -> Unit,
     onNavigateToTodoList: (todoListId: Long) -> Unit,
     onDeleteTodoList: (todoListId: Long) -> Unit,
+    onOpenReminderMenu: (Long?) -> Unit,
+    onReminderUpdated: (Long, Reminder?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (uiState.loading) {
@@ -125,6 +128,7 @@ fun HomeScreen(
                         todoList = todoList,
                         onClick = { onNavigateToTodoList(todoList.id) },
                         onDelete = { onDeleteTodoList(todoList.id) },
+                        onOpenReminderMenu = onOpenReminderMenu,
                         reorderableLazyListState = state,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -133,6 +137,25 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (uiState.reminderMenuOpenForListId != null) {
+        ReminderDialog(
+            // TODO: slow for a large number of todo lists but probably fine.
+            todoListReminder = uiState.todoLists.find { it.id == uiState.reminderMenuOpenForListId }!!.reminder,
+            onConfirm = { reminder ->
+                onReminderUpdated(
+                    uiState.reminderMenuOpenForListId,
+                    reminder
+                )
+                onOpenReminderMenu(null)
+            },
+            onDelete = {
+                onReminderUpdated(uiState.reminderMenuOpenForListId, null)
+                onOpenReminderMenu(null)
+            },
+            onDismiss = { onOpenReminderMenu(null) }
+        )
     }
 }
 
@@ -170,6 +193,7 @@ fun TodoList(
     todoList: TodoList,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onOpenReminderMenu: (Long?) -> Unit,
     reorderableLazyListState: ReorderableLazyListState,
     modifier: Modifier = Modifier,
 ) {
@@ -276,7 +300,7 @@ fun TodoList(
                         if (todoList.reminder != null) {
                             ReminderInfo(
                                 reminder = todoList.reminder,
-                                onClick = { /* TODO: make this clickable to change the reminder. */ },
+                                onClick = { onOpenReminderMenu(todoList.id) },
                                 modifier = Modifier
                                     .fillMaxWidth(0.75f)
                             )
@@ -323,12 +347,15 @@ fun HomeScreenPreview() {
                         ),
                         TodoList(id = 2, name = "Books to Read", position = 2),
                     ),
+                    reminderMenuOpenForListId = null,
                     newTodoListId = null,
                 ),
                 onAddTodoList = {},
                 onMoveTodoList = { _, _ -> },
                 onNavigateToTodoList = {},
                 onDeleteTodoList = {},
+                onOpenReminderMenu = {},
+                onReminderUpdated = { _, _ -> }
             )
         }
     }

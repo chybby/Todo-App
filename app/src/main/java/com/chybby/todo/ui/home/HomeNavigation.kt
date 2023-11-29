@@ -41,6 +41,8 @@ fun NavGraphBuilder.homeScreen(
                 viewModel.ackNewTodoList()
             },
             onDeleteTodoList = viewModel::deleteTodoList,
+            onOpenReminderMenu = viewModel::openReminderMenu,
+            onReminderUpdated = viewModel::editReminder,
         )
     }
 }

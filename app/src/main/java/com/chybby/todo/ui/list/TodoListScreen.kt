@@ -86,6 +86,8 @@ import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoItem
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.rememberPermissionStateSafe
+import com.chybby.todo.ui.ReminderDialog
+import com.chybby.todo.ui.ReminderInfo
 import com.chybby.todo.ui.isItemWithIndexVisible
 import com.chybby.todo.ui.theme.TodoTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
