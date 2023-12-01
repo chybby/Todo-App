@@ -2,6 +2,7 @@ package com.chybby.todo.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.location.Address
 import android.location.Geocoder
 import android.os.Build
@@ -33,11 +34,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LeadingIconTab
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -284,7 +285,7 @@ fun ReminderDialog(
 
                 TabRow(selectedTabIndex = selectedTab) {
                     tabTitlesAndIcons.forEachIndexed { index, (title, icon) ->
-                        Tab(
+                        LeadingIconTab(
                             text = { Text(title) },
                             icon = { Icon(icon, null) },
                             selected = selectedTab == index,
@@ -300,7 +301,7 @@ fun ReminderDialog(
                                         }
                                     )
                                 ) {
-                                    return@Tab
+                                    return@LeadingIconTab
                                 }
                                 selectedTab = index
                             }
@@ -1019,6 +1020,10 @@ fun ReminderInfo(reminder: Reminder, onClick: () -> Unit, modifier: Modifier = M
 
 
 @Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(
+    device = "id:Nexus 5", showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
 @Composable
 fun ReminderDialogPreview() {
     TodoTheme {
@@ -1037,6 +1042,10 @@ fun ReminderDialogPreview() {
 }
 
 @Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(
+    device = "id:Nexus 5", showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
 @Composable
 fun ReminderDialogTimePreview() {
     TodoTheme {
@@ -1063,6 +1072,10 @@ fun ReminderDialogTimePreview() {
 }
 
 @Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(
+    device = "id:Nexus 5", showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
 @Composable
 fun ReminderDialogLocationPreview() {
     TodoTheme {
@@ -1086,7 +1099,11 @@ fun ReminderDialogLocationPreview() {
     }
 }
 
-@Preview(device = "id:Nexus 5", showSystemUi = true, apiLevel = 33)
+@Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(
+    device = "id:Nexus 5", showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
 @Composable
 fun LocationPickerDialogPreview() {
     TodoTheme {
@@ -1103,12 +1120,15 @@ fun LocationPickerDialogPreview() {
     }
 }
 
-@Preview(device = "id:Nexus 5", apiLevel = 33)
+@Preview(device = "id:Nexus 5")
+@Preview(
+    device = "id:Nexus 5",
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
 @Composable
 fun TimeReminderInfoPreview() {
     TodoTheme {
         Surface(
-            modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
             ReminderInfo(
@@ -1119,12 +1139,15 @@ fun TimeReminderInfoPreview() {
     }
 }
 
-@Preview(device = "id:Nexus 5", apiLevel = 33)
+@Preview(device = "id:Nexus 5")
+@Preview(
+    device = "id:Nexus 5",
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+)
 @Composable
 fun LocationReminderInfoPreview() {
     TodoTheme {
         Surface(
-            modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
             ReminderInfo(
