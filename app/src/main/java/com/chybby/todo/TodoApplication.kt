@@ -40,10 +40,12 @@ class TodoApplication : Application(), Configuration.Provider {
         createNotificationChannels()
     }
 
-    override fun getWorkManagerConfiguration() =
+    override val workManagerConfiguration by lazy {
         Configuration.Builder()
             .setWorkerFactory(workerFactory)
             .build()
+    }
+
 
     companion object {
         const val REMINDER_CHANNEL_ID = "REMINDER_CHANNEL_ID"

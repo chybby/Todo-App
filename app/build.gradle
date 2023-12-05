@@ -85,8 +85,7 @@ dependencies {
     annotationProcessor "androidx.room:room-compiler:$room_version"
     ksp "androidx.room:room-compiler:$room_version"
 
-    // NOTE: Do not update to 2.9.0 until documentation on workManagerConfiguration is updated.
-    implementation 'androidx.work:work-runtime-ktx:2.8.1'
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
 
     implementation 'com.google.maps.android:maps-compose:4.3.0'
     implementation 'com.google.android.libraries.places:places:3.3.0'
