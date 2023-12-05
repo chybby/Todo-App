@@ -216,11 +216,18 @@ fun TodoListScreen(
         }
     }
 
+    var indexToFocus by remember { mutableStateOf<Int?>(null) }
+
     Scaffold(
         topBar = {
             TodoListScreenTopBar(
                 name = uiState.todoList.name,
                 onNameChanged = onNameChanged,
+                onNext = {
+                    onTodoItemAdded(null)
+                    indexToFocus = 0
+                },
+                imeAction = if (uiState.todoItems.isEmpty()) ImeAction.Next else ImeAction.Done,
                 hasReminder = uiState.todoList.reminder != null,
                 onOpenReminderMenu = { open ->
                     if (open) {
@@ -250,6 +257,8 @@ fun TodoListScreen(
     ) { contentPadding ->
         TodoListScreenContent(
             uiState = uiState,
+            indexToFocus = indexToFocus,
+            onIndexToFocusChanged = { newIndex -> indexToFocus = newIndex },
             onTodoItemAdded = onTodoItemAdded,
             onSummaryChanged = onSummaryChanged,
             onCompleted = onCompleted,
@@ -317,6 +326,8 @@ fun requestAlarmPermissions(context: Context) {
 @Composable
 fun TodoListScreenContent(
     uiState: TodoListScreenUiState,
+    indexToFocus: Int?,
+    onIndexToFocusChanged: (Int?) -> Unit,
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
@@ -349,6 +360,8 @@ fun TodoListScreenContent(
 
         TodoItemsColumn(
             todoItems = uiState.todoItems,
+            indexToFocus = indexToFocus,
+            onIndexToFocusChanged = onIndexToFocusChanged,
             onTodoItemAdded = onTodoItemAdded,
             onSummaryChanged = onSummaryChanged,
             onCompleted = onCompleted,
@@ -364,6 +377,8 @@ fun TodoListScreenContent(
 @Composable
 fun TodoItemsColumn(
     todoItems: ImmutableList<TodoItem>,
+    indexToFocus: Int?,
+    onIndexToFocusChanged: (Int?) -> Unit,
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
@@ -397,8 +412,6 @@ fun TodoItemsColumn(
         }
     )
 
-    var indexToFocus by remember { mutableStateOf<Int?>(null) }
-
     var completedItemsShown by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
@@ -419,12 +432,12 @@ fun TodoItemsColumn(
                     onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
                     onDelete = { focusPreviousItem ->
                         if (focusPreviousItem) {
-                            indexToFocus = if (index >= 1) index - 1 else null
+                            onIndexToFocusChanged(if (index >= 1) index - 1 else null)
                         }
                         onDelete(todoItem.id)
                     },
                     onNext = {
-                        indexToFocus = index + 1
+                        onIndexToFocusChanged(index + 1)
                         onTodoItemAdded(todoItem.position)
                     },
                     reorderableLazyListState = state,
@@ -437,7 +450,7 @@ fun TodoItemsColumn(
             LaunchedEffect(todoItems.size) {
                 if (index == indexToFocus) {
                     focusRequester.requestFocus()
-                    indexToFocus = null
+                    onIndexToFocusChanged(null)
                 }
             }
         }
@@ -446,7 +459,7 @@ fun TodoItemsColumn(
         item {
             TextButton(
                 onClick = {
-                    indexToFocus = uncompletedTodoItems.size
+                    onIndexToFocusChanged(uncompletedTodoItems.size)
                     onTodoItemAdded(null)
                 }
             ) {
@@ -598,6 +611,8 @@ fun TodoTextField(
 fun TodoListScreenTopBar(
     name: String,
     onNameChanged: (String) -> Unit,
+    onNext: () -> Unit,
+    imeAction: ImeAction,
     hasReminder: Boolean,
     onOpenReminderMenu: (Boolean) -> Unit,
     onNavigateBack: () -> Unit,
@@ -613,6 +628,8 @@ fun TodoListScreenTopBar(
                 onValueChanged = onNameChanged,
                 textStyle = MaterialTheme.typography.headlineMedium,
                 focusRequester = titleFocusRequester,
+                imeAction = imeAction,
+                onNext = onNext,
             )
         },
         navigationIcon = {
