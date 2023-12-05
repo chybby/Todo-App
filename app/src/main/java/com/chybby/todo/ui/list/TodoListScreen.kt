@@ -95,6 +95,7 @@ import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import org.burnoutcrew.reorderable.ReorderableItem
@@ -133,7 +134,7 @@ fun TodoListScreen(
     var alarmPermissionRationaleOpen by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val alarmManager = context.getSystemService(AlarmManager::class.java)
+    val alarmManager = remember { context.getSystemService(AlarmManager::class.java) }
 
     val notificationPermissionState = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
         null
@@ -362,7 +363,7 @@ fun TodoListScreenContent(
 
 @Composable
 fun TodoItemsColumn(
-    todoItems: List<TodoItem>,
+    todoItems: ImmutableList<TodoItem>,
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,

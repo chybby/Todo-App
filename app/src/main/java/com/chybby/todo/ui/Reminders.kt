@@ -146,6 +146,7 @@ fun ReminderDialog(
         Pair("Time", ImageVector.vectorResource(R.drawable.time)),
         Pair("Location", Icons.Default.LocationOn)
     )
+
     val timeTabIndex = 0
     val locationTabIndex = 1
     var selectedTab by remember {
@@ -967,7 +968,11 @@ fun BackgroundLocationPermissionRationaleDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReminderInfo(reminder: Reminder, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ReminderInfo(
+    reminder: Reminder,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val smallPadding = dimensionResource(R.dimen.padding_small)
 
     Card(

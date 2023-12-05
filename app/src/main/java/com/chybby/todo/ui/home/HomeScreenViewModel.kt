@@ -10,6 +10,9 @@ import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.data.TodoListRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -30,12 +33,12 @@ class HomeScreenViewModel @Inject constructor(
         snapshotFlow { _reminderMenuOpenForListId },
         todoListRepository.todoListsStream,
     ) { newTodoListId, reminderMenuOpenForListId, todoLists ->
-        HomeScreenUiState(todoLists, newTodoListId, reminderMenuOpenForListId)
+        HomeScreenUiState(todoLists.toImmutableList(), newTodoListId, reminderMenuOpenForListId)
     }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            HomeScreenUiState(listOf(), null, null, true),
+            HomeScreenUiState(persistentListOf(), null, null, true),
         )
 
     fun openReminderMenu(listId: Long?) {
@@ -69,7 +72,7 @@ class HomeScreenViewModel @Inject constructor(
 }
 
 data class HomeScreenUiState(
-    val todoLists: List<TodoList>,
+    val todoLists: ImmutableList<TodoList>,
     val newTodoListId: Long?,
     val reminderMenuOpenForListId: Long?,
     val loading: Boolean = false,

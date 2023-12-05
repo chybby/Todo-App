@@ -1,6 +1,5 @@
 package com.chybby.todo.data
 
-import androidx.compose.runtime.Immutable
 import com.google.android.gms.maps.model.LatLng
 import java.time.LocalDateTime
 
@@ -18,7 +17,6 @@ sealed interface Reminder {
     data class LocationReminder(val location: Location) : Reminder
 }
 
-@Immutable
 data class TodoList(
     val name: String = "",
     // Where this TodoList is positioned relative to other TodoLists.
@@ -28,7 +26,6 @@ data class TodoList(
     val id: Long = 0,
 )
 
-@Immutable
 data class TodoItem(
     val summary: String = "",
     val isCompleted: Boolean = false,

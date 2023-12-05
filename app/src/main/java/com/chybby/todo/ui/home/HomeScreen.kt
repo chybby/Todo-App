@@ -57,6 +57,7 @@ import com.chybby.todo.ui.ReminderDialog
 import com.chybby.todo.ui.ReminderInfo
 import com.chybby.todo.ui.theme.TodoTheme
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.ReorderableLazyListState
@@ -333,7 +334,7 @@ fun HomeScreenPreview() {
         ) {
             HomeScreen(
                 uiState = HomeScreenUiState(
-                    listOf(
+                    persistentListOf(
                         TodoList(id = 0, name = "Shopping", position = 0),
                         TodoList(
                             id = 1, name = "Clothes", position = 1,
