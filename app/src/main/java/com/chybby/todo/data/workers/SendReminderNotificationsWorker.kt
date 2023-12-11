@@ -112,6 +112,18 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
         notificationManager.notify(listNotificationId, summaryNotification)
     }
 
+    private suspend fun clearExistingNotifications(
+        todoItems: List<TodoItem>,
+    ) {
+        for (todoItem in todoItems) {
+            NotificationActionWorker.clearNotificationForItem(
+                todoItem.id,
+                todoListRepository,
+                applicationContext
+            )
+        }
+    }
+
     override suspend fun doWork(): Result {
 
         val listId = inputData.getLong(KEY_LIST_ID, -1)
@@ -146,6 +158,8 @@ class SendReminderNotificationsWorker @AssistedInject constructor(
                 // No items to send notifications for.
                 return Result.success()
             }
+
+            clearExistingNotifications(todoItems)
 
             createNotifications(notificationManager, todoList, todoItems)
 
