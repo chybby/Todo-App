@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import com.chybby.todo.AlarmReceiver
+import com.chybby.todo.GeofenceReceiver
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
@@ -27,10 +28,8 @@ class DefaultReminderRepository @Inject constructor(
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
     private val geofencingClient = LocationServices.getGeofencingClient(context)
 
-    private fun createPendingIntent(
+    private fun createAlarmPendingIntent(
         listId: Long,
-        requestCode: Int,
-        mutable: Boolean = false,
     ): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java)
         intent.data = Uri.Builder()
@@ -39,9 +38,9 @@ class DefaultReminderRepository @Inject constructor(
 
         return PendingIntent.getBroadcast(
             context,
-            requestCode,
+            0,
             intent,
-            if (mutable) PendingIntent.FLAG_MUTABLE else PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
     }
 
@@ -63,10 +62,21 @@ class DefaultReminderRepository @Inject constructor(
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-            createPendingIntent(listId, 0)
+            createAlarmPendingIntent(listId)
         )
 
         return Result.success(Unit)
+    }
+
+    private fun createGeofencePendingIntent(): PendingIntent {
+        val intent = Intent(context, GeofenceReceiver::class.java)
+
+        return PendingIntent.getBroadcast(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     private suspend fun createGeofence(listId: Long, latLng: LatLng, radius: Float): Result<Unit> {
@@ -93,7 +103,7 @@ class DefaultReminderRepository @Inject constructor(
             .build()
 
         try {
-            geofencingClient.addGeofences(request, createPendingIntent(listId, 1, mutable = true))
+            geofencingClient.addGeofences(request, createGeofencePendingIntent())
                 .await()
         } catch (e: Exception) {
             Timber.e("Failed to add geofence.")
@@ -136,7 +146,7 @@ class DefaultReminderRepository @Inject constructor(
     }
 
     private fun deleteAlarm(listId: Long) {
-        alarmManager?.cancel(createPendingIntent(listId, 0))
+        alarmManager?.cancel(createAlarmPendingIntent(listId))
     }
 
     private suspend fun deleteGeofence(listId: Long): Result<Unit> {

@@ -58,6 +58,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".GeofenceReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".SystemBroadcastReceiver"
             android:exported="false">
             <intent-filter>
