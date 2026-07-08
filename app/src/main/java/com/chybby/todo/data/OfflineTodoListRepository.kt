@@ -20,8 +20,8 @@ import kotlin.reflect.KClass
 class OfflineTodoListRepository @Inject constructor(
     private val todoListDao: TodoListDao,
     private val reminderRepository: ReminderRepository,
-    @ApplicationContext private val context: Context,
-    @DefaultDispatcher private val dispatcher: CoroutineDispatcher,
+    @param:ApplicationContext private val context: Context,
+    @param:DefaultDispatcher private val dispatcher: CoroutineDispatcher,
 ) : TodoListRepository {
 
     private suspend fun clearNotificationForItem(itemId: Long) {
@@ -90,7 +90,7 @@ class OfflineTodoListRepository @Inject constructor(
             Timber.e(result.exceptionOrNull())
             return
         }
-        todoListDao.observeTodoItemsByListId(id).first().map { todoItem ->
+        todoListDao.observeTodoItemsByListId(id).first().forEach { todoItem ->
             clearNotificationForItem(todoItem.id)
         }
         todoListDao.deleteTodoList(id)
