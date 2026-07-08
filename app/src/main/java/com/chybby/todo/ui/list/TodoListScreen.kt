@@ -400,10 +400,12 @@ fun TodoItemsColumn(
         lazyListState,
         onMove = { from, to ->
             // While dragging, update the list stored in the composition.
-            uncompletedTodoItems.apply {
-                add(to.index, removeAt(from.index))
+            if (to.index < uncompletedTodoItems.size) {
+                uncompletedTodoItems.apply {
+                    add(to.index, removeAt(from.index))
+                }
+                onMoveTodoItem(from.index, to.index)
             }
-            onMoveTodoItem(from.index, to.index)
         },
     )
 
