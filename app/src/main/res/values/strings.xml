@@ -34,4 +34,8 @@
     <string name="ok">OK</string>
     <string name="time_reminder">Time reminder</string>
     <string name="location_reminder">Location reminder</string>
+    <plurals name="completed_items_count">
+        <item quantity="one">%1$d completed item</item>
+        <item quantity="other">%1$d completed items</item>
+    </plurals>
 </resources>

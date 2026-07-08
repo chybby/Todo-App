@@ -74,6 +74,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -479,6 +480,7 @@ fun TodoItemsColumn(
 
         if (completedTodoItems.isNotEmpty()) {
             completedHeaderSection(
+                count = completedTodoItems.size,
                 completedItemsShown = completedItemsShown,
                 onToggleCompleted = { completedItemsShown = !completedItemsShown },
                 onDeleteCompleted = onDeleteCompleted
@@ -552,6 +554,7 @@ fun LazyListScope.uncompletedSection(
 }
 
 fun LazyListScope.completedHeaderSection(
+    count: Int,
     completedItemsShown: Boolean,
     onToggleCompleted: () -> Unit,
     onDeleteCompleted: () -> Unit,
@@ -579,7 +582,10 @@ fun LazyListScope.completedHeaderSection(
 
                 Icon(icon, contentDescription)
                 Spacer(Modifier.width(smallPadding))
-                Text(text = "Completed items", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = pluralStringResource(R.plurals.completed_items_count, count, count),
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
             IconButton(
                 onClick = onDeleteCompleted,
