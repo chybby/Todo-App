@@ -224,12 +224,11 @@ fun TodoList(
     SwipeToDismissBox(
         state = dismissState,
         modifier = modifier,
-        onDismiss = {
-            if (it != SwipeToDismissBoxValue.Settled) {
+        onDismiss = { direction ->
+            if (direction == SwipeToDismissBoxValue.EndToStart || direction == SwipeToDismissBoxValue.StartToEnd) {
                 deleteDialogOpen = true
-                true
             } else {
-                false
+                coroutineScope.launch { dismissState.reset() }
             }
         },
         backgroundContent = {

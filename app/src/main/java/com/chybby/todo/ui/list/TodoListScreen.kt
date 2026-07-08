@@ -50,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -98,6 +99,7 @@ import com.google.android.gms.maps.model.LatLng
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -670,18 +672,18 @@ fun TodoItem(
     onNext: () -> Unit = {},
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
-        positionalThreshold = { distance -> distance * 0.33f },
+        positionalThreshold = { distance -> distance * 0.33f }
     )
+    val scope = rememberCoroutineScope()
 
     SwipeToDismissBox(
         state = dismissState,
         modifier = modifier,
-        onDismiss = {
-            if (it != SwipeToDismissBoxValue.Settled) {
+        onDismiss = { direction ->
+            if (direction == SwipeToDismissBoxValue.EndToStart || direction == SwipeToDismissBoxValue.StartToEnd) {
                 onDelete(false)
-                true
             } else {
-                false
+                scope.launch { dismissState.reset() }
             }
         },
         backgroundContent = {},
