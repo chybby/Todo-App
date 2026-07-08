@@ -464,6 +464,7 @@ fun TodoItemsColumn(
                     },
                     reorderableCollectionItemScope = this,
                     modifier = Modifier
+                        .fillMaxWidth()
                         .shadow(elevation = if (isDragging) 4.dp else 0.dp),
                     focusRequester = focusRequester,
                 )
@@ -478,7 +479,7 @@ fun TodoItemsColumn(
         }
 
         // Add new item button.
-        item {
+        item(key = "add_todo_item_button") {
             TextButton(
                 onClick = {
                     onIndexToFocusChanged(uncompletedTodoItems.size)
@@ -546,13 +547,14 @@ fun TodoItemsColumn(
         if (completedItemsShown) {
             items(
                 completedTodoItems,
-                key = { it.id }
+                key = { "completed_${it.id}" }
             ) { todoItem ->
                 TodoItem(
                     todoItem = todoItem,
                     onCompleted = { onCompleted(todoItem.id, it) },
                     onSummaryChanged = { onSummaryChanged(todoItem.id, it) },
                     onDelete = { onDelete(todoItem.id) },
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -719,7 +721,8 @@ fun TodoItem(
         content = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = modifier
+                modifier = Modifier
+                    .fillMaxWidth()
                     .alpha(if (dismissState.progress == 1f) 1f else 1f - dismissState.progress),
             ) {
                 Checkbox(checked = todoItem.isCompleted, onCheckedChange = onCompleted)
