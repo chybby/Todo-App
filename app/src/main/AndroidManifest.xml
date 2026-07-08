@@ -22,7 +22,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Todo"
-        tools:targetApi="33">
+        tools:targetApi="37">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
