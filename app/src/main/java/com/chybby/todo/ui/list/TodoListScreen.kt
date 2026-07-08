@@ -477,19 +477,21 @@ fun TodoItemsColumn(
             }
         }
 
-        completedHeaderSection(
-            completedItemsShown = completedItemsShown,
-            onToggleCompleted = { completedItemsShown = !completedItemsShown },
-            onDeleteCompleted = onDeleteCompleted
-        )
-
-        if (completedItemsShown) {
-            completedSection(
-                items = completedTodoItems,
-                onCompleted = onCompleted,
-                onSummaryChanged = onSummaryChanged,
-                onDelete = onDelete,
+        if (completedTodoItems.isNotEmpty()) {
+            completedHeaderSection(
+                completedItemsShown = completedItemsShown,
+                onToggleCompleted = { completedItemsShown = !completedItemsShown },
+                onDeleteCompleted = onDeleteCompleted
             )
+
+            if (completedItemsShown) {
+                completedSection(
+                    items = completedTodoItems,
+                    onCompleted = onCompleted,
+                    onSummaryChanged = onSummaryChanged,
+                    onDelete = onDelete,
+                )
+            }
         }
     }
 
