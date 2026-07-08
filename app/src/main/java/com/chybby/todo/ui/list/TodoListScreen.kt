@@ -104,17 +104,12 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import timber.log.Timber
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-
-val PERSIST_TEXT_FIELD_TYPING_DELAY: Duration = 300.milliseconds
 
 // TODO: Hitting enter in the middle of an item should split it into two items.
 // TODO: Undo accidentally deleting an item.
@@ -656,8 +651,6 @@ fun TodoTextField(
     }
 
     LaunchedEffect(text.text) {
-        delay(PERSIST_TEXT_FIELD_TYPING_DELAY)
-        // TODO: Changes are lost if the user navigates back very quickly after typing.
         onValueChanged(text.text)
     }
 
