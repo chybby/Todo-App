@@ -31,15 +31,16 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LeadingIconTab
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -284,7 +285,7 @@ fun ReminderDialog(
                     modifier = Modifier.padding(smallPadding)
                 )
 
-                TabRow(selectedTabIndex = selectedTab) {
+                PrimaryTabRow(selectedTabIndex = selectedTab) {
                     tabTitlesAndIcons.forEachIndexed { index, (title, icon) ->
                         LeadingIconTab(
                             text = { Text(title) },
@@ -375,9 +376,9 @@ fun TimeReminder(
 
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis =
-        timeReminder?.dateTime?.toEpochSecond(ZoneOffset.UTC)?.seconds?.inWholeMilliseconds ?:
-        // The instant representing the start of the local day in UTC.
-        LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+            timeReminder?.dateTime?.toEpochSecond(ZoneOffset.UTC)?.seconds?.inWholeMilliseconds ?:
+            // The instant representing the start of the local day in UTC.
+            LocalDate.now().atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
     )
 
     // TODO: setting the time to 11:XX PM or 12:XX PM is buggy. Should be fixed in material3 1.2.0
@@ -691,7 +692,7 @@ fun LocationSearchBox(
             singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true)
                 .onFocusChanged { focusState ->
                     isSearchBoxFocused = focusState.isFocused
                     if (focusState.isFocused) {
@@ -715,7 +716,7 @@ fun LocationSearchBox(
                             focusManager.clearFocus(true)
                             expanded = false
 
-                            val placeFields = listOf(Place.Field.LAT_LNG)
+                            val placeFields = listOf(Place.Field.LOCATION)
 
                             val request = FetchPlaceRequest.newInstance(
                                 prediction.placeId,
@@ -724,7 +725,7 @@ fun LocationSearchBox(
 
                             placesClient!!.fetchPlace(request)
                                 .addOnSuccessListener { response ->
-                                    response.place.latLng?.let {
+                                    response.place.location?.let {
                                         onLocationSelected(
                                             Location(
                                                 it,
@@ -773,39 +774,43 @@ fun LocationPickerMap(
         }
     }
 
-    LaunchedEffect(selectedLocation) {
-        if (selectedLocation != null) {
-            // Move the camera position to the new selected location.
-            cameraPositionState.move(
-                CameraUpdateFactory.newLatLngZoom(
-                    selectedLocation.latLng,
-                    MAP_CAMERA_ZOOM
-                )
-            )
-        } else {
-            // Move the camera position to the current gps location if a location isn't already set.
-            if (ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                return@LaunchedEffect
-            }
+    var mapLoaded by remember { mutableStateOf(false) }
 
-            LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    cameraPositionState.move(
-                        CameraUpdateFactory.newLatLngZoom(
-                            LatLng(
-                                location.latitude,
-                                location.longitude
-                            ),
-                            MAP_CAMERA_ZOOM
-                        )
+    if (mapLoaded) {
+        LaunchedEffect(selectedLocation) {
+            if (selectedLocation != null) {
+                // Move the camera position to the new selected location.
+                cameraPositionState.move(
+                    CameraUpdateFactory.newLatLngZoom(
+                        selectedLocation.latLng,
+                        MAP_CAMERA_ZOOM
                     )
+                )
+            } else {
+                // Move the camera position to the current gps location if a location isn't already set.
+                if (ActivityCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    return@LaunchedEffect
+                }
+
+                LocationServices.getFusedLocationProviderClient(context).lastLocation.addOnSuccessListener { location ->
+                    if (location != null) {
+                        cameraPositionState.move(
+                            CameraUpdateFactory.newLatLngZoom(
+                                LatLng(
+                                    location.latitude,
+                                    location.longitude
+                                ),
+                                MAP_CAMERA_ZOOM
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -818,6 +823,7 @@ fun LocationPickerMap(
             myLocationButtonEnabled = true
         ),
         cameraPositionState = cameraPositionState,
+        onMapLoaded = { mapLoaded = true },
         onMapLongClick = { location ->
             focusManager.clearFocus()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -966,7 +972,6 @@ fun BackgroundLocationPermissionRationaleDialog(
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderInfo(
     reminder: Reminder,
@@ -1024,9 +1029,9 @@ fun ReminderInfo(
 }
 
 
-@Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(device = "id:pixel_9", showSystemUi = true)
 @Preview(
-    device = "id:Nexus 5", showSystemUi = true,
+    device = "id:pixel_9", showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
 )
 @Composable
@@ -1046,9 +1051,9 @@ fun ReminderDialogPreview() {
     }
 }
 
-@Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(device = "id:pixel_9", showSystemUi = true)
 @Preview(
-    device = "id:Nexus 5", showSystemUi = true,
+    device = "id:pixel_9", showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
 )
 @Composable
@@ -1076,9 +1081,9 @@ fun ReminderDialogTimePreview() {
     }
 }
 
-@Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(device = "id:pixel_9", showSystemUi = true)
 @Preview(
-    device = "id:Nexus 5", showSystemUi = true,
+    device = "id:pixel_9", showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
 )
 @Composable
@@ -1104,9 +1109,9 @@ fun ReminderDialogLocationPreview() {
     }
 }
 
-@Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(device = "id:pixel_9", showSystemUi = true)
 @Preview(
-    device = "id:Nexus 5", showSystemUi = true,
+    device = "id:pixel_9", showSystemUi = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
 )
 @Composable
@@ -1125,9 +1130,9 @@ fun LocationPickerDialogPreview() {
     }
 }
 
-@Preview(device = "id:Nexus 5")
+@Preview(device = "id:pixel_9")
 @Preview(
-    device = "id:Nexus 5",
+    device = "id:pixel_9",
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
 )
 @Composable
@@ -1144,9 +1149,9 @@ fun TimeReminderInfoPreview() {
     }
 }
 
-@Preview(device = "id:Nexus 5")
+@Preview(device = "id:pixel_9")
 @Preview(
-    device = "id:Nexus 5",
+    device = "id:pixel_9",
     uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
 )
 @Composable

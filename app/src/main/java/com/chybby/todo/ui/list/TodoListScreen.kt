@@ -4,7 +4,6 @@ import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
@@ -19,12 +18,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -32,19 +32,18 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DismissDirection
-import androidx.compose.material3.DismissValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismiss
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDismissState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -67,7 +66,6 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -78,8 +76,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.chybby.todo.R
 import com.chybby.todo.data.Location
 import com.chybby.todo.data.Reminder
@@ -98,11 +98,9 @@ import com.google.android.gms.maps.model.LatLng
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.ReorderableLazyListState
-import org.burnoutcrew.reorderable.detectReorder
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import timber.log.Timber
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -318,7 +316,7 @@ fun requestAlarmPermissions(context: Context) {
     Timber.d("Requesting SCHEDULE_EXACT_ALARM permission")
     Intent().also { intent ->
         intent.action = Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
-        intent.data = Uri.parse("package:" + context.packageName)
+        intent.data = ("package:" + context.packageName).toUri()
         context.startActivity(intent)
     }
 }
@@ -395,37 +393,30 @@ fun TodoItemsColumn(
 
     val completedTodoItems = remember(todoItems) { todoItems.filter { it.isCompleted } }
 
-    val state = rememberReorderableLazyListState(
+    val lazyListState = rememberLazyListState()
+    val reorderableLazyListState = rememberReorderableLazyListState(
+        lazyListState,
         onMove = { from, to ->
             // While dragging, update the list stored in the composition.
             uncompletedTodoItems.apply {
                 add(to.index, removeAt(from.index))
             }
+            onMoveTodoItem(from.index, to.index)
         },
-        onDragEnd = { from, to ->
-            // When drag ends, update the database.
-            onMoveTodoItem(from, to)
-        },
-        // Only allow drag over other uncompleted items.
-        canDragOver = { draggedOver, _ ->
-            draggedOver.index < uncompletedTodoItems.size
-        }
     )
 
     var completedItemsShown by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
-        state = state.listState,
+        state = lazyListState,
         modifier = modifier
-            .reorderable(state)
     ) {
-
         // Uncompleted items.
         itemsIndexed(uncompletedTodoItems, key = { _, item -> item.id }) { index, todoItem ->
 
             val focusRequester = remember { FocusRequester() }
 
-            ReorderableItem(state, key = todoItem.id) { isDragging ->
+            ReorderableItem(reorderableLazyListState, key = todoItem.id) { isDragging ->
                 TodoItem(
                     todoItem = todoItem,
                     onCompleted = { onCompleted(todoItem.id, it) },
@@ -440,7 +431,7 @@ fun TodoItemsColumn(
                         onIndexToFocusChanged(index + 1)
                         onTodoItemAdded(todoItem.position)
                     },
-                    reorderableLazyListState = state,
+                    reorderableCollectionItemScope = this,
                     modifier = Modifier
                         .shadow(elevation = if (isDragging) 4.dp else 0.dp),
                     focusRequester = focusRequester,
@@ -539,8 +530,8 @@ fun TodoItemsColumn(
     // Scroll to focused item.
     LaunchedEffect(todoItems.size) {
         indexToFocus?.let { index ->
-            if (!state.listState.isItemWithIndexVisible(index)) {
-                state.listState.animateScrollToItem(index)
+            if (!lazyListState.isItemWithIndexVisible(index)) {
+                lazyListState.animateScrollToItem(index)
             }
         }
     }
@@ -634,7 +625,10 @@ fun TodoListScreenTopBar(
         },
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back)
+                )
             }
         },
         actions = {
@@ -671,28 +665,27 @@ fun TodoItem(
     onSummaryChanged: (String) -> Unit,
     onDelete: (focusPreviousItem: Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    reorderableLazyListState: ReorderableLazyListState? = null,
+    reorderableCollectionItemScope: ReorderableCollectionItemScope? = null,
     focusRequester: FocusRequester = FocusRequester.Default,
     onNext: () -> Unit = {},
 ) {
-    val dismissState = rememberDismissState(
+    val dismissState = rememberSwipeToDismissBoxState(
         positionalThreshold = { distance -> distance * 0.33f },
-        confirmValueChange = {
-            if (it != DismissValue.Default) {
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier,
+        onDismiss = {
+            if (it != SwipeToDismissBoxValue.Settled) {
                 onDelete(false)
                 true
             } else {
                 false
             }
-        }
-    )
-
-    SwipeToDismiss(
-        state = dismissState,
-        modifier = modifier,
-        directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-        background = {},
-        dismissContent = {
+        },
+        backgroundContent = {},
+        content = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = modifier
@@ -710,15 +703,19 @@ fun TodoItem(
                     modifier = Modifier
                         .weight(1f)
                 )
-                if (!todoItem.isCompleted && reorderableLazyListState != null) {
-                    Icon(
-                        painterResource(R.drawable.drag_indicator),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .detectReorder(reorderableLazyListState)
-                            .padding(dimensionResource(R.dimen.padding_small))
-                    )
+                if (!todoItem.isCompleted && reorderableCollectionItemScope != null) {
+                    IconButton(
+                        modifier = with(reorderableCollectionItemScope) { Modifier.draggableHandle() },
+                        onClick = {},
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.drag_indicator),
+                            contentDescription = "Reorder",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .padding(dimensionResource(R.dimen.padding_small))
+                        )
+                    }
                 }
             }
         }
@@ -781,10 +778,10 @@ fun AlarmPermissionRationaleDialog(
     )
 }
 
-@Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(device = "id:pixel_9", showSystemUi = true, apiLevel = 36)
 @Preview(
-    device = "id:Nexus 5", showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+    device = "id:pixel_9", showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL, apiLevel = 36
 )
 @Composable
 fun TodoListScreenPreview() {

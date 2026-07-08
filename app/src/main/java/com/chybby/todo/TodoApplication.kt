@@ -35,7 +35,7 @@ class TodoApplication : Application(), Configuration.Provider {
             Timber.plant(Timber.DebugTree())
         }
 
-        Places.initialize(this, BuildConfig.MAPS_API_KEY)
+        Places.initializeWithNewPlacesApiEnabled(this, BuildConfig.MAPS_API_KEY)
 
         createNotificationChannels()
     }

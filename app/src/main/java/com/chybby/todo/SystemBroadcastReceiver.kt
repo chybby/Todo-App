@@ -42,7 +42,7 @@ class SystemBroadcastReceiver : BroadcastReceiver() {
                     .enqueue()
             }
 
-            // TODO: geofences probably also need to be rescheduled when location permission is revoked and restored.
+            // TODO: Geofences probably also need to be rescheduled when location permission is revoked and restored.
             AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
                 Timber.d("Received intent with action ${intent.action}")
                 val request = OneTimeWorkRequestBuilder<ScheduleRemindersWorker>()

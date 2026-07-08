@@ -34,7 +34,7 @@ object DatabaseModule {
         "todo_database"
     )
         .addMigrations(MIGRATION_8_9)
-        .fallbackToDestructiveMigration()
+        .fallbackToDestructiveMigration(false)
         .build()
 
     @Provides

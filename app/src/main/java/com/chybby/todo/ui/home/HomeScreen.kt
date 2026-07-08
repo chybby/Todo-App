@@ -14,23 +14,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.DismissDirection
-import androidx.compose.material3.DismissValue
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismiss
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDismissState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,11 +59,9 @@ import com.chybby.todo.ui.theme.TodoTheme
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.ReorderableLazyListState
-import org.burnoutcrew.reorderable.detectReorder
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun HomeScreen(
@@ -92,16 +90,14 @@ fun HomeScreen(
     // Store a mutable version of the list locally so it is updated quickly while dragging.
     val todoLists by rememberUpdatedState(uiState.todoLists.toMutableStateList())
 
-    val state = rememberReorderableLazyListState(
+    val lazyListState = rememberLazyListState()
+    val reorderableLazyListState = rememberReorderableLazyListState(
+        lazyListState,
         onMove = { from, to ->
-            // While dragging, update the list stored in the composition.
             todoLists.apply {
                 add(to.index, removeAt(from.index))
             }
-        },
-        onDragEnd = { from, to ->
-            // When drag ends, update the database.
-            onMoveTodoList(from, to)
+            onMoveTodoList(from.index, to.index)
         }
     )
 
@@ -113,24 +109,22 @@ fun HomeScreen(
         },
         modifier = modifier,
     ) { contentPadding ->
-
         LazyColumn(
-            state = state.listState,
+            state = lazyListState,
             contentPadding = contentPadding,
             verticalArrangement = spacedBy(smallPadding),
             modifier = Modifier
                 .fillMaxSize()
                 .padding(smallPadding)
-                .reorderable(state)
         ) {
             items(todoLists, key = { it.id }) { todoList ->
-                ReorderableItem(reorderableState = state, key = todoList.id) { isDragging ->
+                ReorderableItem(reorderableLazyListState, key = todoList.id) { isDragging ->
                     TodoList(
                         todoList = todoList,
                         onClick = { onNavigateToTodoList(todoList.id) },
                         onDelete = { onDeleteTodoList(todoList.id) },
                         onOpenReminderMenu = onOpenReminderMenu,
-                        reorderableLazyListState = state,
+                        reorderableCollectionItemScope = this,
                         modifier = Modifier
                             .fillMaxWidth()
                             .shadow(if (isDragging) 4.dp else 0.dp)
@@ -188,30 +182,20 @@ fun ConfirmDeleteDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoList(
     todoList: TodoList,
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onOpenReminderMenu: (Long?) -> Unit,
-    reorderableLazyListState: ReorderableLazyListState,
+    reorderableCollectionItemScope: ReorderableCollectionItemScope,
     modifier: Modifier = Modifier,
 ) {
     val smallPadding = dimensionResource(id = R.dimen.padding_small)
 
     var deleteDialogOpen by remember { mutableStateOf(false) }
 
-    val dismissState = rememberDismissState(
-        confirmValueChange = {
-            if (it != DismissValue.Default) {
-                deleteDialogOpen = true
-                true
-            } else {
-                false
-            }
-        }
-    )
+    val dismissState = rememberSwipeToDismissBoxState()
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -237,27 +221,35 @@ fun TodoList(
         )
     }
 
-    SwipeToDismiss(
+    SwipeToDismissBox(
         state = dismissState,
         modifier = modifier,
-        directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-        background = {
-            val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
+        onDismiss = {
+            if (it != SwipeToDismissBoxValue.Settled) {
+                deleteDialogOpen = true
+                true
+            } else {
+                false
+            }
+        },
+        backgroundContent = {
+            val direction = dismissState.dismissDirection
             val color by animateColorAsState(
                 when (dismissState.targetValue) {
-                    DismissValue.Default -> MaterialTheme.colorScheme.tertiaryContainer
-                    else -> MaterialTheme.colorScheme.errorContainer
+                    SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.tertiaryContainer
+                    else -> MaterialTheme.colorScheme.error
                 }, label = "Animate background color on dismiss"
             )
             val alignment = when (direction) {
-                DismissDirection.StartToEnd -> Alignment.CenterStart
-                DismissDirection.EndToStart -> Alignment.CenterEnd
+                SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                else -> Alignment.Center
             }
 
             val icon = Icons.Default.Delete
 
             val scale by animateFloatAsState(
-                if (dismissState.targetValue == DismissValue.Default) 0.75f else 1f,
+                if (dismissState.targetValue == SwipeToDismissBoxValue.Settled) 0.75f else 1f,
                 label = "Animate scale on dismiss"
             )
 
@@ -277,7 +269,7 @@ fun TodoList(
                 }
             }
         },
-        dismissContent = {
+        content = {
             Card(
                 onClick = onClick,
                 modifier = Modifier
@@ -308,22 +300,25 @@ fun TodoList(
                         }
                     }
 
-                    Icon(
-                        painterResource(R.drawable.drag_indicator),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .detectReorder(reorderableLazyListState)
-                    )
+                    IconButton(
+                        modifier = with(reorderableCollectionItemScope) { Modifier.draggableHandle() },
+                        onClick = {},
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.drag_indicator),
+                            contentDescription = "Reorder",
+                        )
+                    }
                 }
             }
         }
     )
 }
 
-@Preview(device = "id:Nexus 5", showSystemUi = true)
+@Preview(device = "id:pixel_9", showSystemUi = true, apiLevel = 36)
 @Preview(
-    device = "id:Nexus 5", showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
+    device = "id:pixel_9", showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL, apiLevel = 36
 )
 @Composable
 fun HomeScreenPreview() {
