@@ -151,9 +151,28 @@ class OfflineTodoListRepository @Inject constructor(
         todoListDao.updateTodoItemSummary(id, summary)
 
     override suspend fun completeTodoItem(id: Long, completed: Boolean) {
-        todoListDao.updateTodoItemCompleted(id, completed)
+        val todoItem = todoListDao.getTodoItemById(id)
+
         if (completed) {
+            val firstCompletedPosition = todoListDao.getFirstCompletedItemPosition(todoItem.listId)
+            val targetPosition =
+                firstCompletedPosition ?: ((todoListDao.getLastItemPositionInList(todoItem.listId)
+                    ?: -1) + 1)
+
+            todoListDao.updateTodoItemCompleted(id, true)
+            todoListDao.moveTodoItem(id, targetPosition)
             clearNotificationForItem(id)
+        } else {
+            val lastUncompletedPosition =
+                todoListDao.getLastUncompletedItemPosition(todoItem.listId)
+            val targetPosition = if (lastUncompletedPosition != null) {
+                lastUncompletedPosition + 1
+            } else {
+                0
+            }
+
+            todoListDao.updateTodoItemCompleted(id, false)
+            todoListDao.moveTodoItem(id, targetPosition)
         }
     }
 

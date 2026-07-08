@@ -116,6 +116,11 @@ import kotlin.time.Duration.Companion.milliseconds
 
 val PERSIST_TEXT_FIELD_TYPING_DELAY: Duration = 300.milliseconds
 
+// TODO: Hitting enter in the middle of an item should split it into two items.
+// TODO: Undo accidentally deleting an item.
+// TODO: Confirm when deleting all completed items.
+// TODO: Notifications when connecting to a specific wifi
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun TodoListScreen(

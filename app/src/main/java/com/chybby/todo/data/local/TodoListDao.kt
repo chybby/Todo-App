@@ -31,10 +31,16 @@ interface TodoListDao {
         observeTodoItemsByListIdRaw(listId).distinctUntilChanged()
 
     @Query("SELECT position FROM todo_list ORDER BY position DESC LIMIT 1")
-    suspend fun getLastListPosition(): Int
+    suspend fun getLastListPosition(): Int?
 
     @Query("SELECT position FROM todo_item WHERE list_id = :listId ORDER BY position DESC LIMIT 1")
-    suspend fun getLastItemPositionInList(listId: Long): Int
+    suspend fun getLastItemPositionInList(listId: Long): Int?
+
+    @Query("SELECT MIN(position) FROM todo_item WHERE list_id = :listId AND is_completed")
+    suspend fun getFirstCompletedItemPosition(listId: Long): Int?
+
+    @Query("SELECT MAX(position) FROM todo_item WHERE list_id = :listId AND NOT is_completed")
+    suspend fun getLastUncompletedItemPosition(listId: Long): Int?
 
     @Query("SELECT * FROM todo_item WHERE id = :id")
     suspend fun getTodoItemById(id: Long): TodoItemEntity
@@ -46,7 +52,7 @@ interface TodoListDao {
 
     @Transaction
     suspend fun insertTodoListLast(todoList: TodoListEntity): Long {
-        val position = getLastListPosition() + 1
+        val position = (getLastListPosition() ?: -1) + 1
         val todoListWithPosition = todoList.copy(position = position)
         return insertTodoList(todoListWithPosition)
     }
@@ -56,7 +62,7 @@ interface TodoListDao {
 
     @Transaction
     suspend fun insertTodoItemLast(todoItem: TodoItemEntity): Long {
-        val position = getLastItemPositionInList(todoItem.listId) + 1
+        val position = (getLastItemPositionInList(todoItem.listId) ?: -1) + 1
         val todoItemWithPosition = todoItem.copy(position = position)
         return insertTodoItem(todoItemWithPosition)
     }
