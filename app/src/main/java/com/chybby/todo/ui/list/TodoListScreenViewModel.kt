@@ -64,19 +64,22 @@ class TodoListScreenViewModel @Inject constructor(
         todoListRepository.addTodoItem(_listId, afterPosition)
     }
 
-    fun moveTodoItem(from: Int, to: Int) = viewModelScope.launch {
+    fun moveTodoItem(itemId: Long, to: Int) = viewModelScope.launch {
         val uncompletedItems = uiState.value.todoItems.filter { !it.isCompleted }
 
-        if (to >= uncompletedItems.size || from >= uncompletedItems.size) {
+        // Use the ID to find the correct item, in case the list has shifted.
+        val actualFrom = uncompletedItems.indexOfFirst { it.id == itemId }
+        if (actualFrom == -1 || to >= uncompletedItems.size) {
             return@launch
         }
 
         var afterPosition = -1
         if (to > 0) {
-            afterPosition = uncompletedItems[to - (if (from < to) 0 else 1)].position
+            // Find the item that will be BEFORE the moved item in the new order.
+            val targetIndexInOldList = if (actualFrom < to) to else to - 1
+            afterPosition = uncompletedItems[targetIndexInOldList].position
         }
-        val todoItemToMove = uncompletedItems[from]
-        todoListRepository.moveTodoItem(todoItemToMove.id, afterPosition)
+        todoListRepository.moveTodoItem(itemId, afterPosition)
     }
 
     fun openReminderMenu(open: Boolean) {

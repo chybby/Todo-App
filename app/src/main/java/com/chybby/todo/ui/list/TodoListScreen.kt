@@ -51,7 +51,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
@@ -117,7 +116,7 @@ fun TodoListScreen(
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
-    onMoveTodoItem: (Int, Int) -> Unit,
+    onMoveTodoItem: (Long, Int) -> Unit,
     onDelete: (Long) -> Unit,
     onDeleteCompleted: () -> Unit,
     onOpenReminderMenu: (Boolean) -> Unit,
@@ -331,7 +330,7 @@ fun TodoListScreenContent(
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
-    onMoveTodoItem: (Int, Int) -> Unit,
+    onMoveTodoItem: (Long, Int) -> Unit,
     onDelete: (Long) -> Unit,
     onDeleteCompleted: () -> Unit,
     onOpenReminderMenu: (Boolean) -> Unit,
@@ -382,7 +381,7 @@ fun TodoItemsColumn(
     onTodoItemAdded: (afterPosition: Int?) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
-    onMoveTodoItem: (Int, Int) -> Unit,
+    onMoveTodoItem: (Long, Int) -> Unit,
     onDelete: (Long) -> Unit,
     onDeleteCompleted: () -> Unit,
     modifier: Modifier = Modifier,
@@ -390,24 +389,52 @@ fun TodoItemsColumn(
     val smallPadding = dimensionResource(R.dimen.padding_small)
 
     // Store a mutable version of the list locally so it is updated quickly while dragging.
-    val uncompletedTodoItems by rememberUpdatedState(todoItems.filter { !it.isCompleted }
-        .toMutableStateList())
-
-    val completedTodoItems = remember(todoItems) { todoItems.filter { it.isCompleted } }
+    val uncompletedTodoItems = remember {
+        todoItems.filter { !it.isCompleted }.toMutableStateList()
+    }
 
     val lazyListState = rememberLazyListState()
     val reorderableLazyListState = rememberReorderableLazyListState(
         lazyListState,
         onMove = { from, to ->
-            // While dragging, update the list stored in the composition.
-            if (to.index < uncompletedTodoItems.size) {
+            val fromIndex = uncompletedTodoItems.indexOfFirst { it.id == from.key as Long }
+            val toIndex = uncompletedTodoItems.indexOfFirst { it.id == to.key as Long }
+
+            if (fromIndex != -1 && toIndex != -1) {
                 uncompletedTodoItems.apply {
-                    add(to.index, removeAt(from.index))
+                    add(toIndex, removeAt(fromIndex))
                 }
-                onMoveTodoItem(from.index, to.index)
+                onMoveTodoItem(from.key as Long, toIndex)
             }
         },
     )
+
+    val isDragging = reorderableLazyListState.isAnyItemDragging
+
+    // Sync with todoItems when it changes, but skip it while dragging to avoid jumbled items.
+    if (!isDragging) {
+        val filtered = todoItems.filter { !it.isCompleted }
+        val currentIds = uncompletedTodoItems.map { it.id }
+        val newIds = filtered.map { it.id }
+
+        if (currentIds != newIds) {
+            uncompletedTodoItems.clear()
+            uncompletedTodoItems.addAll(filtered)
+        } else {
+            filtered.forEachIndexed { index, item ->
+                if (uncompletedTodoItems[index] != item) {
+                    uncompletedTodoItems[index] = item
+                }
+            }
+        }
+    }
+
+    // Ensure completedTodoItems never contains anything that is currently in uncompletedTodoItems
+    // to avoid duplicate key crashes during section transitions.
+    val completedTodoItems = remember(todoItems, uncompletedTodoItems.size) {
+        val currentUncompletedIds = uncompletedTodoItems.map { it.id }.toSet()
+        todoItems.filter { it.isCompleted && it.id !in currentUncompletedIds }
+    }
 
     var completedItemsShown by rememberSaveable { mutableStateOf(false) }
 

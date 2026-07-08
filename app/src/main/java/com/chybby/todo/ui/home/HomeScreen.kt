@@ -39,7 +39,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
@@ -73,7 +72,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 fun HomeScreen(
     uiState: HomeScreenUiState,
     onAddTodoList: () -> Unit,
-    onMoveTodoList: (from: Int, to: Int) -> Unit,
+    onMoveTodoList: (todoListId: Long, to: Int) -> Unit,
     onNavigateToTodoList: (todoListId: Long) -> Unit,
     onDeleteTodoList: (todoListId: Long) -> Unit,
     onOpenReminderMenu: (Long?) -> Unit,
@@ -94,18 +93,43 @@ fun HomeScreen(
     }
 
     // Store a mutable version of the list locally so it is updated quickly while dragging.
-    val todoLists by rememberUpdatedState(uiState.todoLists.toMutableStateList())
+    val todoLists = remember {
+        uiState.todoLists.toMutableStateList()
+    }
 
     val lazyListState = rememberLazyListState()
     val reorderableLazyListState = rememberReorderableLazyListState(
         lazyListState,
         onMove = { from, to ->
-            todoLists.apply {
-                add(to.index, removeAt(from.index))
+            val fromIndex = todoLists.indexOfFirst { it.id == from.key as Long }
+            val toIndex = todoLists.indexOfFirst { it.id == to.key as Long }
+
+            if (fromIndex != -1 && toIndex != -1) {
+                todoLists.apply {
+                    add(toIndex, removeAt(fromIndex))
+                }
+                onMoveTodoList(from.key as Long, toIndex)
             }
-            onMoveTodoList(from.index, to.index)
         }
     )
+
+    // Sync with uiState.todoLists when it changes, but skip it while dragging to avoid jumbled items.
+    val isDragging = reorderableLazyListState.isAnyItemDragging
+    if (!isDragging) {
+        val currentIds = todoLists.map { it.id }
+        val newIds = uiState.todoLists.map { it.id }
+
+        if (currentIds != newIds) {
+            todoLists.clear()
+            todoLists.addAll(uiState.todoLists)
+        } else {
+            uiState.todoLists.forEachIndexed { index, item ->
+                if (todoLists.size > index && todoLists[index] != item) {
+                    todoLists[index] = item
+                }
+            }
+        }
+    }
 
     Scaffold(
         floatingActionButton = {
