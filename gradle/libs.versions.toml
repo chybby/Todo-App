@@ -25,6 +25,7 @@ reorderable = "3.1.0"
 room = "2.8.4"
 timber = "5.0.1"
 workRuntimeKtx = "2.11.2"
+uiGraphics = "1.11.4"
 
 [libraries]
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
@@ -67,6 +68,7 @@ maps-compose = { group = "com.google.maps.android", name = "maps-compose", versi
 places = { group = "com.google.android.libraries.places", name = "places", version.ref = "places" }
 reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
