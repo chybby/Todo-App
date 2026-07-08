@@ -7,11 +7,10 @@ import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -291,15 +290,14 @@ fun TodoList(
                                 lerp(0.5f, 1.0f, linearProgress * 3.0f).coerceAtMost(1.0f)
                             )
                         )
-                        .padding(vertical = 10.dp, horizontal = 10.dp),
+                        .padding(horizontal = 10.dp),
                     contentAlignment = alignment
                 ) {
                     Icon(
                         icon,
                         contentDescription = stringResource(R.string.delete_list),
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .aspectRatio(1f)
+                            .size(40.dp)
                             .scale(
                                 lerp(
                                     0.5f,

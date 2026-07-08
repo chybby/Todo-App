@@ -26,6 +26,7 @@ room = "2.8.4"
 timber = "5.0.1"
 workRuntimeKtx = "2.11.2"
 uiGraphics = "1.11.4"
+coreSplashscreen = "1.2.0"
 
 [libraries]
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanistPermissions" }
@@ -55,6 +56,7 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 desugar_jdk_libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "dagger" }

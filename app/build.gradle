@@ -67,6 +67,7 @@ dependencies {
 
     implementation platform(libs.kotlin.bom.lib)
     implementation libs.core.ktx
+    implementation libs.core.splashscreen
     implementation libs.androidx.lifecycle.runtime.ktx
     implementation libs.androidx.lifecycle.viewmodel.compose
     implementation libs.androidx.lifecycle.runtime.compose
