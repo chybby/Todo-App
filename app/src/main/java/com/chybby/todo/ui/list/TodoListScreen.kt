@@ -52,7 +52,9 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,6 +75,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
@@ -119,7 +122,6 @@ import timber.log.Timber
 // TODO: Undo accidentally deleting an item.
 // TODO: Confirm when deleting all completed items.
 // TODO: Notifications when connecting to a specific Wi-Fi
-// TODO: Fade out item when swiping to delete.
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -777,9 +779,17 @@ fun TodoItem(
     )
     val scope = rememberCoroutineScope()
 
+    var itemWidth by remember { mutableFloatStateOf(1f) }
+    val linearProgress by remember {
+        derivedStateOf {
+            val offset = runCatching { dismissState.requireOffset() }.getOrDefault(0f)
+            (kotlin.math.abs(offset) / itemWidth).coerceIn(0f, 1f)
+        }
+    }
+
     SwipeToDismissBox(
         state = dismissState,
-        modifier = modifier,
+        modifier = modifier.onSizeChanged { itemWidth = it.width.toFloat() },
         onDismiss = { direction ->
             if (direction == SwipeToDismissBoxValue.EndToStart || direction == SwipeToDismissBoxValue.StartToEnd) {
                 onDelete(false)
@@ -793,7 +803,7 @@ fun TodoItem(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .alpha(if (dismissState.progress == 1f) 1f else 1f - dismissState.progress),
+                    .alpha((1f - linearProgress * 2f).coerceIn(0.3f, 1f)),
             ) {
                 Checkbox(checked = todoItem.isCompleted, onCheckedChange = onCompleted)
                 TodoTextField(
