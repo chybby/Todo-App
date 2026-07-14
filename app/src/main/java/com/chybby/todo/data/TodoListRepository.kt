@@ -36,7 +36,7 @@ interface TodoListRepository {
 
     // TodoItem.
 
-    suspend fun addTodoItem(listId: Long, afterPosition: Int? = null): Long
+    suspend fun addTodoItem(listId: Long, afterPosition: Int? = null, summary: String = ""): Long
 
     suspend fun editTodoItemSummary(id: Long, summary: String)
 

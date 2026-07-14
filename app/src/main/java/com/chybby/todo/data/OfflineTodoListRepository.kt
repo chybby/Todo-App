@@ -137,9 +137,9 @@ class OfflineTodoListRepository @Inject constructor(
 
     // TodoItem.
 
-    override suspend fun addTodoItem(listId: Long, afterPosition: Int?): Long {
+    override suspend fun addTodoItem(listId: Long, afterPosition: Int?, summary: String): Long {
         val todoItem = TodoItemEntity(
-            summary = "",
+            summary = summary,
             isCompleted = false,
             listId = listId,
             position = afterPosition?.plus(1) ?: 0,

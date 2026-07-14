@@ -116,7 +116,6 @@ import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import timber.log.Timber
 
-// TODO: Hitting enter in the middle of an item should split it into two items.
 // TODO: Undo accidentally deleting an item.
 // TODO: Confirm when deleting all completed items.
 // TODO: Notifications when connecting to a specific Wi-Fi
@@ -127,7 +126,7 @@ import timber.log.Timber
 fun TodoListScreen(
     uiState: TodoListScreenUiState,
     onNameChanged: (String) -> Unit,
-    onTodoItemAdded: (afterPosition: Int?) -> Unit,
+    onTodoItemAdded: (afterPosition: Int?, summary: String) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
     onMoveTodoItem: (Long, Int) -> Unit,
@@ -237,7 +236,7 @@ fun TodoListScreen(
                 name = uiState.todoList.name,
                 onNameChanged = onNameChanged,
                 onNext = {
-                    onTodoItemAdded(null)
+                    onTodoItemAdded(null, "")
                     indexToFocus = 0
                 },
                 imeAction = if (uiState.todoItems.isEmpty()) ImeAction.Next else ImeAction.Done,
@@ -341,7 +340,7 @@ fun TodoListScreenContent(
     uiState: TodoListScreenUiState,
     indexToFocus: Int?,
     onIndexToFocusChanged: (Int?) -> Unit,
-    onTodoItemAdded: (afterPosition: Int?) -> Unit,
+    onTodoItemAdded: (afterPosition: Int?, summary: String) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
     onMoveTodoItem: (Long, Int) -> Unit,
@@ -392,7 +391,7 @@ fun TodoItemsColumn(
     todoItems: ImmutableList<TodoItem>,
     indexToFocus: Int?,
     onIndexToFocusChanged: (Int?) -> Unit,
-    onTodoItemAdded: (afterPosition: Int?) -> Unit,
+    onTodoItemAdded: (afterPosition: Int?, summary: String) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
     onMoveTodoItem: (Long, Int) -> Unit,
@@ -459,7 +458,7 @@ fun TodoItemsColumn(
             TextButton(
                 onClick = {
                     onIndexToFocusChanged(uncompletedTodoItems.size)
-                    onTodoItemAdded(null)
+                    onTodoItemAdded(null, "")
                 }
             ) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_item))
@@ -506,7 +505,7 @@ fun LazyListScope.uncompletedSection(
     todoItemsSize: Int,
     indexToFocus: Int?,
     onIndexToFocusChanged: (Int?) -> Unit,
-    onTodoItemAdded: (afterPosition: Int?) -> Unit,
+    onTodoItemAdded: (afterPosition: Int?, summary: String) -> Unit,
     onSummaryChanged: (Long, String) -> Unit,
     onCompleted: (Long, Boolean) -> Unit,
     onDelete: (Long) -> Unit,
@@ -525,9 +524,9 @@ fun LazyListScope.uncompletedSection(
                     }
                     onDelete(todoItem.id)
                 },
-                onNext = {
+                onNext = { textAfterCursor ->
                     onIndexToFocusChanged(index + 1)
-                    onTodoItemAdded(todoItem.position)
+                    onTodoItemAdded(todoItem.position, textAfterCursor)
                 },
                 reorderableCollectionItemScope = this,
                 modifier = Modifier
@@ -624,7 +623,11 @@ fun TodoTextField(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = FocusRequester.Default,
     imeAction: ImeAction = ImeAction.Default,
-    onNext: () -> Unit = {},
+    // Called with the text after the cursor when splitOnNext is set, otherwise with "".
+    onNext: (textAfterCursor: String) -> Unit = {},
+    // Split the text at the cursor on the Next action: this field keeps the text before the
+    // cursor and onNext receives the rest (a selection is dropped, like typing over it).
+    splitOnNext: Boolean = false,
     onDelete: () -> Unit = {},
 ) {
     // Keep the current value of the textbox as UI state and save it as the user types.
@@ -661,8 +664,16 @@ fun TodoTextField(
                 defaultKeyboardAction(ImeAction.Done)
             },
             onNext = {
-                onValueChanged(text.text)
-                onNext()
+                if (splitOnNext) {
+                    val textBeforeCursor = text.text.substring(0, text.selection.min)
+                    val textAfterCursor = text.text.substring(text.selection.max)
+                    text = TextFieldValue(textBeforeCursor, TextRange(textBeforeCursor.length))
+                    onValueChanged(textBeforeCursor)
+                    onNext(textAfterCursor)
+                } else {
+                    onValueChanged(text.text)
+                    onNext("")
+                }
             },
         ),
         keyboardOptions = KeyboardOptions(
@@ -712,7 +723,7 @@ fun TodoListScreenTopBar(
                 textStyle = MaterialTheme.typography.headlineMedium,
                 focusRequester = titleFocusRequester,
                 imeAction = imeAction,
-                onNext = onNext,
+                onNext = { onNext() },
             )
         },
         navigationIcon = {
@@ -759,7 +770,7 @@ fun TodoItem(
     modifier: Modifier = Modifier,
     reorderableCollectionItemScope: ReorderableCollectionItemScope? = null,
     focusRequester: FocusRequester = FocusRequester.Default,
-    onNext: () -> Unit = {},
+    onNext: (textAfterCursor: String) -> Unit = {},
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         positionalThreshold = { distance -> distance * 0.33f }
@@ -792,6 +803,7 @@ fun TodoItem(
                     focusRequester = focusRequester,
                     imeAction = if (todoItem.isCompleted) ImeAction.Done else ImeAction.Next,
                     onNext = onNext,
+                    splitOnNext = true,
                     onDelete = { onDelete(true) },
                     modifier = Modifier
                         .weight(1f)
@@ -936,7 +948,7 @@ fun TodoListScreenPreview() {
                     )
                 ),
                 onNameChanged = {},
-                onTodoItemAdded = {},
+                onTodoItemAdded = { _, _ -> },
                 onSummaryChanged = { _, _ -> },
                 onCompleted = { _, _ -> },
                 onMoveTodoItem = { _, _ -> },
