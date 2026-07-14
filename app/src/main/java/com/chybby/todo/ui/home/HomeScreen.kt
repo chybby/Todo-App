@@ -59,6 +59,7 @@ import com.chybby.todo.data.Reminder
 import com.chybby.todo.data.TodoList
 import com.chybby.todo.ui.ReminderDialog
 import com.chybby.todo.ui.ReminderInfo
+import com.chybby.todo.ui.syncWith
 import com.chybby.todo.ui.theme.TodoTheme
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.collections.immutable.persistentListOf
@@ -115,19 +116,7 @@ fun HomeScreen(
     // Sync with uiState.todoLists when it changes, but skip it while dragging to avoid jumbled items.
     val isDragging = reorderableLazyListState.isAnyItemDragging
     if (!isDragging) {
-        val currentIds = todoLists.map { it.id }
-        val newIds = uiState.todoLists.map { it.id }
-
-        if (currentIds != newIds) {
-            todoLists.clear()
-            todoLists.addAll(uiState.todoLists)
-        } else {
-            uiState.todoLists.forEachIndexed { index, item ->
-                if (todoLists.size > index && todoLists[index] != item) {
-                    todoLists[index] = item
-                }
-            }
-        }
+        todoLists.syncWith(uiState.todoLists) { it.id }
     }
 
     Scaffold(
@@ -164,22 +153,32 @@ fun HomeScreen(
     }
 
     if (uiState.reminderMenuOpenForListId != null) {
-        ReminderDialog(
-            // TODO: slow for a large number of todo lists but probably fine.
-            todoListReminder = uiState.todoLists.find { it.id == uiState.reminderMenuOpenForListId }!!.reminder,
-            onConfirm = { reminder ->
-                onReminderUpdated(
-                    uiState.reminderMenuOpenForListId,
-                    reminder
-                )
+        // TODO: slow for a large number of todo lists but probably fine.
+        val reminderMenuTodoList =
+            uiState.todoLists.find { it.id == uiState.reminderMenuOpenForListId }
+
+        if (reminderMenuTodoList == null) {
+            // The list no longer exists (e.g. it was deleted before state was restored).
+            LaunchedEffect(uiState.reminderMenuOpenForListId) {
                 onOpenReminderMenu(null)
-            },
-            onDelete = {
-                onReminderUpdated(uiState.reminderMenuOpenForListId, null)
-                onOpenReminderMenu(null)
-            },
-            onDismiss = { onOpenReminderMenu(null) }
-        )
+            }
+        } else {
+            ReminderDialog(
+                todoListReminder = reminderMenuTodoList.reminder,
+                onConfirm = { reminder ->
+                    onReminderUpdated(
+                        uiState.reminderMenuOpenForListId,
+                        reminder
+                    )
+                    onOpenReminderMenu(null)
+                },
+                onDelete = {
+                    onReminderUpdated(uiState.reminderMenuOpenForListId, null)
+                    onOpenReminderMenu(null)
+                },
+                onDismiss = { onOpenReminderMenu(null) }
+            )
+        }
     }
 }
 

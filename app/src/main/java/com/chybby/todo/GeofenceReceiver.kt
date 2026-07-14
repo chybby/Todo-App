@@ -8,6 +8,7 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.chybby.todo.data.workers.SendReminderNotificationsWorker
 import com.google.android.gms.location.Geofence
+import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingEvent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -23,6 +24,17 @@ class GeofenceReceiver : BroadcastReceiver() {
         Timber.d("Received broadcast.")
 
         val geofencingEvent = GeofencingEvent.fromIntent(intent) ?: return
+
+        if (geofencingEvent.hasError()) {
+            Timber.e(
+                "Geofencing error: %s",
+                GeofenceStatusCodes.getStatusCodeString(geofencingEvent.errorCode)
+            )
+            // GEOFENCE_NOT_AVAILABLE means all geofences were removed (usually because location
+            // services were disabled). SystemBroadcastReceiver re-registers them when location is
+            // enabled again.
+            return
+        }
 
         if (geofencingEvent.geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT) {
             return

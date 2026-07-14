@@ -643,7 +643,9 @@ fun LocationSearchBox(
     } else {
         remember { Places.createClient(context) }
     }
-    val token = remember { AutocompleteSessionToken.newInstance() }
+    // Autocomplete requests sharing this token are billed as a single session, ended by the
+    // fetchPlace call. A new token is created after each fetch to start the next session.
+    var token by remember { mutableStateOf(AutocompleteSessionToken.newInstance()) }
 
     var results by remember { mutableStateOf<List<AutocompletePrediction>>(listOf()) }
     var expanded by remember { mutableStateOf(false) }
@@ -651,6 +653,17 @@ fun LocationSearchBox(
 
     // Run a places query on new input after a short delay.
     LaunchedEffect(query.text) {
+        if (placesClient == null) {
+            return@LaunchedEffect
+        }
+
+        if (query.text.isBlank()) {
+            // Don't send a request for an empty query.
+            results = listOf()
+            expanded = false
+            return@LaunchedEffect
+        }
+
         delay(PLACES_QUERY_TYPING_DELAY)
 
         val request = FindAutocompletePredictionsRequest.builder()
@@ -658,7 +671,7 @@ fun LocationSearchBox(
             .setQuery(query.text)
             .build()
 
-        placesClient!!.findAutocompletePredictions(request)
+        placesClient.findAutocompletePredictions(request)
             .addOnSuccessListener { response ->
                 results = response.autocompletePredictions.take(MAX_PLACES_RESULTS)
                 if (isSearchBoxFocused) {
@@ -718,13 +731,20 @@ fun LocationSearchBox(
 
                             val placeFields = listOf(Place.Field.LOCATION)
 
-                            val request = FetchPlaceRequest.newInstance(
+                            // Pass the session token so the autocomplete requests and this fetch
+                            // are billed as one session.
+                            val request = FetchPlaceRequest.builder(
                                 prediction.placeId,
                                 placeFields
                             )
+                                .setSessionToken(token)
+                                .build()
 
-                            placesClient!!.fetchPlace(request)
-                                .addOnSuccessListener { response ->
+                            // The fetch ends the current autocomplete session.
+                            token = AutocompleteSessionToken.newInstance()
+
+                            placesClient?.fetchPlace(request)
+                                ?.addOnSuccessListener { response ->
                                     response.place.location?.let {
                                         onLocationSelected(
                                             Location(
@@ -735,7 +755,7 @@ fun LocationSearchBox(
                                         )
                                     }
                                 }
-                                .addOnFailureListener { exception ->
+                                ?.addOnFailureListener { exception ->
                                     Timber.w("Error when getting place details.")
                                     exception.printStackTrace()
                                 }

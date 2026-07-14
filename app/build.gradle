@@ -48,6 +48,10 @@ android {
     buildToolsVersion = '37.0.0'
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas".toString())
+}
+
 dependencies {
     implementation libs.ui.graphics
     coreLibraryDesugaring libs.desugar.jdk.libs

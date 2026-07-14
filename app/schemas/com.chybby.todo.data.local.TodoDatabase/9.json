@@ -1,0 +1,206 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 9,
+    "identityHash": "8475bb534d3770e8b50a4d90973605db",
+    "entities": [
+      {
+        "tableName": "todo_item",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `summary` TEXT NOT NULL, `is_completed` INTEGER NOT NULL, `list_id` INTEGER NOT NULL, `position` INTEGER NOT NULL, `notification_id` INTEGER, FOREIGN KEY(`list_id`) REFERENCES `todo_list`(`id`) ON UPDATE CASCADE ON DELETE CASCADE , FOREIGN KEY(`notification_id`) REFERENCES `notification`(`id`) ON UPDATE CASCADE ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isCompleted",
+            "columnName": "is_completed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "listId",
+            "columnName": "list_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notificationId",
+            "columnName": "notification_id",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_todo_item_list_id",
+            "unique": false,
+            "columnNames": [
+              "list_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_todo_item_list_id` ON `${TABLE_NAME}` (`list_id`)"
+          },
+          {
+            "name": "index_todo_item_notification_id",
+            "unique": false,
+            "columnNames": [
+              "notification_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_todo_item_notification_id` ON `${TABLE_NAME}` (`notification_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "todo_list",
+            "onDelete": "CASCADE",
+            "onUpdate": "CASCADE",
+            "columns": [
+              "list_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "notification",
+            "onDelete": "SET NULL",
+            "onUpdate": "CASCADE",
+            "columns": [
+              "notification_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "todo_list",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `position` INTEGER NOT NULL, `reminder_date_time` INTEGER, `reminder_location_latitude` REAL, `reminder_location_longitude` REAL, `reminder_location_radius` REAL, `reminder_location_description` TEXT, `notification_id` INTEGER, FOREIGN KEY(`notification_id`) REFERENCES `notification`(`id`) ON UPDATE CASCADE ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reminderDateTime",
+            "columnName": "reminder_date_time",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "reminderLocationLatitude",
+            "columnName": "reminder_location_latitude",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "reminderLocationLongitude",
+            "columnName": "reminder_location_longitude",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "reminderLocationRadius",
+            "columnName": "reminder_location_radius",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "reminderLocationDescription",
+            "columnName": "reminder_location_description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "notificationId",
+            "columnName": "notification_id",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_todo_list_notification_id",
+            "unique": false,
+            "columnNames": [
+              "notification_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_todo_list_notification_id` ON `${TABLE_NAME}` (`notification_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "notification",
+            "onDelete": "SET NULL",
+            "onUpdate": "CASCADE",
+            "columns": [
+              "notification_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "notification",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8475bb534d3770e8b50a4d90973605db')"
+    ]
+  }
+}

@@ -22,7 +22,7 @@ import java.time.ZoneId
 import javax.inject.Inject
 
 class DefaultReminderRepository @Inject constructor(
-    @ApplicationContext val context: Context,
+    @param:ApplicationContext val context: Context,
 ) : ReminderRepository {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
@@ -161,8 +161,21 @@ class DefaultReminderRepository @Inject constructor(
         return Result.success(Unit)
     }
 
-    override suspend fun deleteReminder(listId: Long): Result<Unit> {
-        deleteAlarm(listId)
-        return deleteGeofence(listId)
+    override suspend fun deleteReminder(listId: Long, reminder: Reminder?): Result<Unit> {
+        return when (reminder) {
+            is Reminder.TimeReminder -> {
+                // Deleting an alarm can't fail, and skipping the geofence round-trip avoids
+                // failing (and keeping a stale reminder around) when Play Services is unavailable.
+                deleteAlarm(listId)
+                Result.success(Unit)
+            }
+
+            is Reminder.LocationReminder -> deleteGeofence(listId)
+
+            null -> {
+                deleteAlarm(listId)
+                deleteGeofence(listId)
+            }
+        }
     }
 }

@@ -24,7 +24,7 @@ class Converters {
 @Database(
     entities = [TodoItemEntity::class, TodoListEntity::class, NotificationEntity::class],
     version = 9,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class TodoDatabase : RoomDatabase() {

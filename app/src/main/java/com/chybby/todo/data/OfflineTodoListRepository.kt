@@ -39,11 +39,9 @@ class OfflineTodoListRepository @Inject constructor(
         }
 
     override suspend fun getTodoLists(): List<TodoList> =
-        todoListDao.getTodoLists().map { todoLists ->
-            // Use the dispatcher to map potentially many items.
-            withContext(dispatcher) {
-                todoLists.toExternal()
-            }
+        // Use the dispatcher to map potentially many items.
+        withContext(dispatcher) {
+            todoListDao.getTodoLists().toExternal()
         }
 
     override fun getTodoListStreamById(id: Long): Flow<TodoList> =
@@ -57,8 +55,8 @@ class OfflineTodoListRepository @Inject constructor(
             }
         }
 
-    override suspend fun getTodoItem(id: Long): TodoItem =
-        todoListDao.getTodoItemById(id).toExternal()
+    override suspend fun getTodoItem(id: Long): TodoItem? =
+        todoListDao.getTodoItemById(id)?.toExternal()
 
     // TodoList.
 
@@ -84,12 +82,17 @@ class OfflineTodoListRepository @Inject constructor(
         todoListDao.updateTodoListName(id, name)
 
     override suspend fun deleteTodoList(id: Long) {
-        val result = reminderRepository.deleteReminder(id)
-        if (result.isFailure) {
-            Timber.e("Failed to delete reminder.")
-            Timber.e(result.exceptionOrNull())
-            return
+        val todoList = todoListDao.getTodoListById(id)?.toExternal() ?: return
+
+        // Deleting the list shouldn't be blocked by a failure to remove its OS-level reminder
+        // trigger. An orphaned trigger fires a worker that fails gracefully for a missing list.
+        todoList.reminder?.let { reminder ->
+            reminderRepository.deleteReminder(id, reminder).onFailure { throwable ->
+                Timber.e("Failed to delete reminder.")
+                Timber.e(throwable)
+            }
         }
+
         todoListDao.observeTodoItemsByListId(id).first().forEach { todoItem ->
             clearNotificationForItem(todoItem.id)
         }
@@ -104,7 +107,10 @@ class OfflineTodoListRepository @Inject constructor(
         val result = if (reminder != null) {
             reminderRepository.createReminder(id, reminder)
         } else {
-            reminderRepository.deleteReminder(id)
+            val currentReminder = todoListDao.getTodoListById(id)?.toExternal()?.reminder
+            // Nothing to delete.
+                ?: return
+            reminderRepository.deleteReminder(id, currentReminder)
         }
 
         if (result.isSuccess) {
@@ -151,31 +157,14 @@ class OfflineTodoListRepository @Inject constructor(
         todoListDao.updateTodoItemSummary(id, summary)
 
     override suspend fun completeTodoItem(id: Long, completed: Boolean) {
-        val todoItem = todoListDao.getTodoItemById(id)
+        // Read-and-move happens in a single transaction so concurrent completions (e.g. the UI
+        // checkbox and a notification action) can't interleave and corrupt positions.
+        todoListDao.completeTodoItem(id, completed)
 
         if (completed) {
-            val firstCompletedPosition = todoListDao.getFirstCompletedItemPosition(todoItem.listId)
-            val targetPosition =
-                firstCompletedPosition ?: ((todoListDao.getLastItemPositionInList(todoItem.listId)
-                    ?: -1) + 1)
-
-            todoListDao.updateTodoItemCompleted(id, true)
-            todoListDao.moveTodoItem(id, targetPosition)
             clearNotificationForItem(id)
-        } else {
-            val lastUncompletedPosition =
-                todoListDao.getLastUncompletedItemPosition(todoItem.listId)
-            val targetPosition = if (lastUncompletedPosition != null) {
-                lastUncompletedPosition + 1
-            } else {
-                0
-            }
-
-            todoListDao.updateTodoItemCompleted(id, false)
-            todoListDao.moveTodoItem(id, targetPosition)
         }
     }
-
 
     override suspend fun moveTodoItem(id: Long, afterPosition: Int) =
         todoListDao.moveTodoItem(id, afterPosition + 1)

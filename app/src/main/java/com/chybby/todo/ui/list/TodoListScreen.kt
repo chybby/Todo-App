@@ -58,6 +58,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,8 +69,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.dimensionResource
@@ -96,6 +99,7 @@ import com.chybby.todo.rememberPermissionStateSafe
 import com.chybby.todo.ui.ReminderDialog
 import com.chybby.todo.ui.ReminderInfo
 import com.chybby.todo.ui.isItemWithIndexVisible
+import com.chybby.todo.ui.syncWith
 import com.chybby.todo.ui.theme.TodoTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
@@ -104,6 +108,7 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -422,20 +427,7 @@ fun TodoItemsColumn(
 
     // Sync with todoItems when it changes, but skip it while dragging to avoid jumbled items.
     if (!isDragging) {
-        val filtered = todoItems.filter { !it.isCompleted }
-        val currentIds = uncompletedTodoItems.map { it.id }
-        val newIds = filtered.map { it.id }
-
-        if (currentIds != newIds) {
-            uncompletedTodoItems.clear()
-            uncompletedTodoItems.addAll(filtered)
-        } else {
-            filtered.forEachIndexed { index, item ->
-                if (uncompletedTodoItems[index] != item) {
-                    uncompletedTodoItems[index] = item
-                }
-            }
-        }
+        uncompletedTodoItems.syncWith(todoItems.filter { !it.isCompleted }) { it.id }
     }
 
     // Ensure completedTodoItems never contains anything that is currently in uncompletedTodoItems
@@ -635,8 +627,7 @@ fun TodoTextField(
     onNext: () -> Unit = {},
     onDelete: () -> Unit = {},
 ) {
-    // Keep the current value of the textbox as UI state. Update the database once the user has
-    // stopped typing for a short period.
+    // Keep the current value of the textbox as UI state and save it as the user types.
     var text by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         // Start the cursor at the end of the existing text.
         mutableStateOf(TextFieldValue(text = value, selection = TextRange(value.length)))
@@ -651,8 +642,12 @@ fun TodoTextField(
         }
     }
 
-    LaunchedEffect(text.text) {
-        onValueChanged(text.text)
+    LaunchedEffect(Unit) {
+        snapshotFlow { text.text }
+            // Skip the initial value so composing the field doesn't write the unchanged text
+            // back to the database (or overwrite a newer value with the seeded one).
+            .drop(1)
+            .collect { onValueChanged(it) }
     }
 
     BasicTextField(
@@ -681,9 +676,12 @@ fun TodoTextField(
             .focusRequester(focusRequester)
             // Move the cursor to the end of the existing text when focus changes.
             .onFocusChanged { text = text.copy(selection = TextRange(text.text.length)) }
-            // Delete item if backspace on empty summary.
-            .onKeyEvent {
-                if (it.key == Key.Backspace && text.text.isEmpty()) {
+            // Delete item if backspace is pressed while the summary is already empty. Preview
+            // events tunnel in before the field's own handling, so on KeyDown the text still has
+            // its pre-edit value — the backspace that deletes the last character sees non-empty
+            // text and doesn't also delete the item.
+            .onPreviewKeyEvent {
+                if (it.type == KeyEventType.KeyDown && it.key == Key.Backspace && text.text.isEmpty()) {
                     onDelete()
                 }
                 false

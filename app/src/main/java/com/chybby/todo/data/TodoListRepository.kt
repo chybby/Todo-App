@@ -14,7 +14,7 @@ interface TodoListRepository {
 
     fun getTodoItemsStreamByListId(listId: Long): Flow<List<TodoItem>>
 
-    suspend fun getTodoItem(id: Long): TodoItem
+    suspend fun getTodoItem(id: Long): TodoItem?
 
     // TodoList.
 

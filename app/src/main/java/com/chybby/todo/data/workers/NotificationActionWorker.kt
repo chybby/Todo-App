@@ -56,7 +56,8 @@ class NotificationActionWorker @AssistedInject constructor(
         ) {
             val notificationManager = NotificationManagerCompat.from(context)
 
-            val todoItem = todoListRepository.getTodoItem(itemId)
+            // The item may already have been deleted.
+            val todoItem = todoListRepository.getTodoItem(itemId) ?: return
 
             // Cancel the notification for the item.
             todoItem.notificationId?.also { notificationId ->

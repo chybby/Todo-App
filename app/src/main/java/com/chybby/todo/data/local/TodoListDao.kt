@@ -43,7 +43,10 @@ interface TodoListDao {
     suspend fun getLastUncompletedItemPosition(listId: Long): Int?
 
     @Query("SELECT * FROM todo_item WHERE id = :id")
-    suspend fun getTodoItemById(id: Long): TodoItemEntity
+    suspend fun getTodoItemById(id: Long): TodoItemEntity?
+
+    @Query("SELECT * FROM todo_list WHERE id = :id")
+    suspend fun getTodoListById(id: Long): TodoListEntity?
 
     // Insert
 
@@ -148,6 +151,28 @@ interface TodoListDao {
     @Query("UPDATE todo_item SET is_completed = :completed WHERE id = :id")
     suspend fun updateTodoItemCompleted(id: Long, completed: Boolean)
 
+    @Transaction
+    suspend fun completeTodoItem(id: Long, completed: Boolean) {
+        val todoItem = getTodoItemById(id) ?: return
+
+        if (completed) {
+            // Move the item to the top of the completed section.
+            val firstCompletedPosition = getFirstCompletedItemPosition(todoItem.listId)
+            val targetPosition = firstCompletedPosition
+                ?: ((getLastItemPositionInList(todoItem.listId) ?: -1) + 1)
+
+            updateTodoItemCompleted(id, true)
+            moveTodoItem(id, targetPosition)
+        } else {
+            // Move the item to the bottom of the uncompleted section.
+            val lastUncompletedPosition = getLastUncompletedItemPosition(todoItem.listId)
+            val targetPosition = (lastUncompletedPosition ?: -1) + 1
+
+            updateTodoItemCompleted(id, false)
+            moveTodoItem(id, targetPosition)
+        }
+    }
+
     @Query("UPDATE todo_item SET position = position + 1 WHERE list_id = :listId AND position >= :position")
     suspend fun prepareForTodoItemInsertion(listId: Long, position: Int)
 
@@ -156,7 +181,7 @@ interface TodoListDao {
 
     @Transaction
     suspend fun moveTodoItem(id: Long, position: Int) {
-        val todoItem = getTodoItemById(id)
+        val todoItem = getTodoItemById(id) ?: return
         prepareForTodoItemInsertion(todoItem.listId, position)
         updateTodoItemPosition(id, position)
     }
