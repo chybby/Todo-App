@@ -114,7 +114,8 @@ import timber.log.Timber
 // TODO: Hitting enter in the middle of an item should split it into two items.
 // TODO: Undo accidentally deleting an item.
 // TODO: Confirm when deleting all completed items.
-// TODO: Notifications when connecting to a specific wifi
+// TODO: Notifications when connecting to a specific Wi-Fi
+// TODO: Fade out item when swiping to delete.
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
