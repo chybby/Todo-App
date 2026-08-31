@@ -108,12 +108,19 @@ interface TodoListDao {
         description: String?,
     )
 
+    @Query("UPDATE todo_list SET reminder_wifi_ssid = :ssid WHERE id = :id")
+    suspend fun updateTodoListWifiReminder(id: Long, ssid: String?)
+
+    @Query("SELECT COUNT(*) FROM todo_list WHERE reminder_wifi_ssid IS NOT NULL")
+    suspend fun countWifiReminders(): Int
+
     @Transaction
     suspend fun updateTodoListReminder(id: Long, reminder: Reminder?) {
         when (reminder) {
             is Reminder.TimeReminder -> {
                 updateTodoListTimeReminder(id, reminder.dateTime)
                 updateTodoListLocationReminder(id, null, null, null, null)
+                updateTodoListWifiReminder(id, null)
             }
 
             is Reminder.LocationReminder -> {
@@ -125,12 +132,19 @@ interface TodoListDao {
                     reminder.location.description
                 )
                 updateTodoListTimeReminder(id, null)
+                updateTodoListWifiReminder(id, null)
+            }
 
+            is Reminder.WifiReminder -> {
+                updateTodoListWifiReminder(id, reminder.ssid)
+                updateTodoListTimeReminder(id, null)
+                updateTodoListLocationReminder(id, null, null, null, null)
             }
 
             null -> {
                 updateTodoListTimeReminder(id, null)
                 updateTodoListLocationReminder(id, null, null, null, null)
+                updateTodoListWifiReminder(id, null)
             }
         }
     }

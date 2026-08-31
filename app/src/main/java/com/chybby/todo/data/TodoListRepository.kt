@@ -34,6 +34,10 @@ interface TodoListRepository {
 
     suspend fun scheduleExistingReminders(type: KClass<*>)
 
+    // Arms or cancels the shared Wi-Fi watch work so it is running exactly when at least one
+    // list has a WifiReminder.
+    suspend fun syncWifiWatch()
+
     // TodoItem.
 
     suspend fun addTodoItem(listId: Long, afterPosition: Int? = null, summary: String = ""): Long

@@ -34,6 +34,13 @@
     <string name="ok">OK</string>
     <string name="time_reminder">Time reminder</string>
     <string name="location_reminder">Location reminder</string>
+    <string name="wifi_reminder">Wi-Fi reminder</string>
+    <string name="wifi_network">Wi-Fi network</string>
+    <string name="choose_a_network">Choose a network</string>
+    <string name="network_name">Network name</string>
+    <string name="refresh">Refresh</string>
+    <string name="nearby_wifi_permission_rationale_title">Allow nearby Wi-Fi devices access</string>
+    <string name="nearby_wifi_permission_rationale_description">This app requires permission to access nearby Wi-Fi devices to read the names of Wi-Fi networks. Would you like to grant it?</string>
     <plurals name="completed_items_count">
         <item quantity="one">%1$d completed item</item>
         <item quantity="other">%1$d completed items</item>

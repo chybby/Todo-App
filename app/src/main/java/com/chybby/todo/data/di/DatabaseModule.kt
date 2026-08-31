@@ -20,6 +20,12 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE todo_list ADD COLUMN reminder_wifi_ssid TEXT")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -33,7 +39,7 @@ object DatabaseModule {
         TodoDatabase::class.java,
         "todo_database"
     )
-        .addMigrations(MIGRATION_8_9)
+        .addMigrations(MIGRATION_8_9, MIGRATION_9_10)
         .build()
 
     @Provides

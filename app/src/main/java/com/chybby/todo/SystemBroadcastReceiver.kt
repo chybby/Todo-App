@@ -25,11 +25,13 @@ class SystemBroadcastReceiver : BroadcastReceiver() {
     private fun scheduleRemindersRequest(
         time: Boolean,
         location: Boolean,
+        wifi: Boolean,
     ): OneTimeWorkRequest = OneTimeWorkRequestBuilder<ScheduleRemindersWorker>()
         .setInputData(
             workDataOf(
                 ScheduleRemindersWorker.KEY_SCHEDULE_TIME_REMINDERS to time,
                 ScheduleRemindersWorker.KEY_SCHEDULE_LOCATION_REMINDERS to location,
+                ScheduleRemindersWorker.KEY_SCHEDULE_WIFI_REMINDERS to wifi,
             )
         )
         .build()
@@ -41,19 +43,24 @@ class SystemBroadcastReceiver : BroadcastReceiver() {
                 workManager
                     // Clear notifications from the database. Notifications disappear after a reboot.
                     .beginWith(OneTimeWorkRequest.from(ClearNotificationsWorker::class.java))
-                    .then(scheduleRemindersRequest(time = true, location = true))
+                    // Alarms, geofences and network callbacks are all cleared by a reboot.
+                    .then(scheduleRemindersRequest(time = true, location = true, wifi = true))
                     .enqueue()
             }
 
             // TODO: Geofences probably also need to be rescheduled when location permission is revoked and restored.
             AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
-                workManager.enqueue(scheduleRemindersRequest(time = true, location = false))
+                workManager.enqueue(
+                    scheduleRemindersRequest(time = true, location = false, wifi = false)
+                )
             }
 
             // Alarms are scheduled as a fixed instant computed from the reminder's local date and
             // time, so recompute them when the timezone or clock changes.
             Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_TIME_CHANGED -> {
-                workManager.enqueue(scheduleRemindersRequest(time = true, location = false))
+                workManager.enqueue(
+                    scheduleRemindersRequest(time = true, location = false, wifi = false)
+                )
             }
 
             // Play Services silently removes geofences when location services are disabled.
@@ -65,7 +72,9 @@ class SystemBroadcastReceiver : BroadcastReceiver() {
                         locationManager
                     )
                 ) {
-                    workManager.enqueue(scheduleRemindersRequest(time = false, location = true))
+                    workManager.enqueue(
+                        scheduleRemindersRequest(time = false, location = true, wifi = false)
+                    )
                 }
             }
         }

@@ -15,6 +15,9 @@ sealed interface Reminder {
 
     // A latitude, longitude and radius.
     data class LocationReminder(val location: Location) : Reminder
+
+    // The SSID of a Wi-Fi network, unquoted.
+    data class WifiReminder(val ssid: String) : Reminder
 }
 
 data class TodoList(

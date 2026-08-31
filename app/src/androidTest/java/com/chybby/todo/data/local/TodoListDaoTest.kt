@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.chybby.todo.data.Reminder
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -12,6 +13,7 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDateTime
 
 @RunWith(AndroidJUnit4::class)
 class TodoListDaoTest {
@@ -41,6 +43,7 @@ class TodoListDaoTest {
         reminderLocationLongitude = null,
         reminderLocationRadius = null,
         reminderLocationDescription = null,
+        reminderWifiSsid = null,
         notificationId = null,
     )
 
@@ -174,5 +177,59 @@ class TodoListDaoTest {
     @Test
     fun getTodoItemById_missingItem_returnsNull() = runBlocking {
         assertNull(dao.getTodoItemById(12345))
+    }
+
+    @Test
+    fun updateTodoListReminder_wifiReminder_clearsOtherReminderColumns() = runBlocking {
+        val listId = dao.insertTodoListLast(todoList())
+        dao.updateTodoListReminder(
+            listId,
+            Reminder.TimeReminder(LocalDateTime.of(2026, 1, 1, 9, 0))
+        )
+
+        dao.updateTodoListReminder(listId, Reminder.WifiReminder("MyHomeNetwork"))
+
+        val list = dao.getTodoListById(listId)!!
+        assertEquals("MyHomeNetwork", list.reminderWifiSsid)
+        assertNull(list.reminderDateTime)
+        assertNull(list.reminderLocationLatitude)
+    }
+
+    @Test
+    fun updateTodoListReminder_timeReminder_clearsWifiReminderColumn() = runBlocking {
+        val listId = dao.insertTodoListLast(todoList())
+        dao.updateTodoListReminder(listId, Reminder.WifiReminder("MyHomeNetwork"))
+
+        val dateTime = LocalDateTime.of(2026, 1, 1, 9, 0)
+        dao.updateTodoListReminder(listId, Reminder.TimeReminder(dateTime))
+
+        val list = dao.getTodoListById(listId)!!
+        assertEquals(dateTime, list.reminderDateTime)
+        assertNull(list.reminderWifiSsid)
+    }
+
+    @Test
+    fun updateTodoListReminder_null_clearsWifiReminderColumn() = runBlocking {
+        val listId = dao.insertTodoListLast(todoList())
+        dao.updateTodoListReminder(listId, Reminder.WifiReminder("MyHomeNetwork"))
+
+        dao.updateTodoListReminder(listId, null)
+
+        assertNull(dao.getTodoListById(listId)!!.reminderWifiSsid)
+    }
+
+    @Test
+    fun countWifiReminders_countsOnlyListsWithWifiReminders() = runBlocking {
+        val idA = dao.insertTodoListLast(todoList("A"))
+        val idB = dao.insertTodoListLast(todoList("B"))
+        dao.insertTodoListLast(todoList("C"))
+        assertEquals(0, dao.countWifiReminders())
+
+        dao.updateTodoListReminder(idA, Reminder.WifiReminder("NetworkA"))
+        dao.updateTodoListReminder(idB, Reminder.WifiReminder("NetworkB"))
+        assertEquals(2, dao.countWifiReminders())
+
+        dao.updateTodoListReminder(idA, null)
+        assertEquals(1, dao.countWifiReminders())
     }
 }

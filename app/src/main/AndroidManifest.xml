@@ -10,6 +10,13 @@
     <uses-permission
         android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
         tools:ignore="BackgroundLocationPolicy" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="31" />
 
     <application
         android:name=".TodoApplication"
@@ -53,14 +60,17 @@
 
         <receiver
             android:name=".NotificationActionReceiver"
+            android:enabled="true"
             android:exported="false" />
 
         <receiver
             android:name=".AlarmReceiver"
+            android:enabled="true"
             android:exported="false" />
 
         <receiver
             android:name=".GeofenceReceiver"
+            android:enabled="true"
             android:exported="false" />
 
         <receiver

@@ -5,6 +5,7 @@ import android.content.Context
 import com.chybby.todo.data.local.TodoItemEntity
 import com.chybby.todo.data.local.TodoListDao
 import com.chybby.todo.data.local.TodoListEntity
+import com.chybby.todo.data.workers.CheckWifiRemindersWorker
 import com.chybby.todo.data.workers.NotificationActionWorker
 import com.chybby.todo.di.DefaultDispatcher
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -70,6 +71,7 @@ class OfflineTodoListRepository @Inject constructor(
                 reminderLocationLongitude = null,
                 reminderLocationDescription = null,
                 reminderLocationRadius = null,
+                reminderWifiSsid = null,
                 notificationId = null,
             )
         )
@@ -97,6 +99,9 @@ class OfflineTodoListRepository @Inject constructor(
             clearNotificationForItem(todoItem.id)
         }
         todoListDao.deleteTodoList(id)
+
+        CheckWifiRemindersWorker.clearNotifiedList(context, id)
+        syncWifiWatch()
     }
 
     // Completed items shouldn't have a notification so no need to clear.
@@ -115,8 +120,20 @@ class OfflineTodoListRepository @Inject constructor(
 
         if (result.isSuccess) {
             todoListDao.updateTodoListReminder(id, reminder)
+
+            // Forget that this list was already notified for the connected network, so a
+            // just-created Wi-Fi reminder fires immediately even if an earlier reminder on this
+            // list fired for the same connection.
+            CheckWifiRemindersWorker.clearNotifiedList(context, id)
+
+            // The shared Wi-Fi watch has no per-list trigger to delete, so sync it with the
+            // database once the database reflects this edit.
+            syncWifiWatch()
         }
     }
+
+    override suspend fun syncWifiWatch() =
+        reminderRepository.updateWifiWatch(todoListDao.countWifiReminders() > 0)
 
     override suspend fun scheduleExistingReminders(type: KClass<*>) {
         getTodoLists().forEach { todoList ->

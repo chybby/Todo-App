@@ -1,27 +1,36 @@
 package com.chybby.todo.ui
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.location.Address
 import android.location.Geocoder
+import android.net.wifi.WifiManager
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -35,18 +44,20 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LeadingIconTab
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
@@ -71,17 +82,16 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.chybby.todo.R
 import com.chybby.todo.data.Location
 import com.chybby.todo.data.Reminder
 import com.chybby.todo.rememberMultiplePermissionsStateSafe
 import com.chybby.todo.rememberPermissionStateSafe
-import com.chybby.todo.ui.theme.TodoTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.PermissionState
@@ -145,16 +155,26 @@ fun ReminderDialog(
 
     val tabTitlesAndIcons = listOf(
         Pair("Time", ImageVector.vectorResource(R.drawable.time)),
-        Pair("Location", Icons.Default.LocationOn)
+        Pair("Location", Icons.Default.LocationOn),
+        Pair("Wi-Fi", ImageVector.vectorResource(R.drawable.wifi))
     )
 
     val timeTabIndex = 0
     val locationTabIndex = 1
+    val wifiTabIndex = 2
     var selectedTab by remember {
         mutableIntStateOf(
-            if (todoListReminder is Reminder.LocationReminder) locationTabIndex else timeTabIndex
+            when (todoListReminder) {
+                is Reminder.LocationReminder -> locationTabIndex
+                is Reminder.WifiReminder -> wifiTabIndex
+                else -> timeTabIndex
+            }
         )
     }
+
+    // On older API levels the Wi-Fi tab is gated by the same location permissions as the
+    // Location tab, so remember which tab kicked off the request to return to it once granted.
+    var pendingPermissionTab by rememberSaveable { mutableIntStateOf(locationTabIndex) }
 
     var newTimeReminder by remember {
         mutableStateOf<Reminder.TimeReminder?>(
@@ -164,6 +184,7 @@ fun ReminderDialog(
         )
     }
     var newLocationReminder by remember { mutableStateOf(todoListReminder as? Reminder.LocationReminder) }
+    var newWifiReminder by remember { mutableStateOf(todoListReminder as? Reminder.WifiReminder) }
 
     // Represent the local time as a UTC timestamp.
     var currentDateTime by remember { mutableStateOf(LocalDateTime.now()) }
@@ -179,7 +200,7 @@ fun ReminderDialog(
             if (granted) {
                 // Background location permission was just granted.
                 // Let's assume foreground location permission is granted.
-                selectedTab = locationTabIndex
+                selectedTab = pendingPermissionTab
             }
         }
     }
@@ -214,12 +235,53 @@ fun ReminderDialog(
             )
 
             if (allPermissionsGranted) {
-                selectedTab = locationTabIndex
+                selectedTab = pendingPermissionTab
             }
         } else {
             // Re-open the foreground location permission rationale if not all permissions were granted.
             foregroundLocationPermissionRationaleOpen = true
         }
+    }
+
+    var nearbyWifiPermissionRationaleOpen by rememberSaveable { mutableStateOf(false) }
+
+    // From API 33, scanning for Wi-Fi networks requires NEARBY_WIFI_DEVICES. The location
+    // permissions are still needed on top: SSIDs count as location data, so listing networks and
+    // reading the connected SSID (in the background, for the reminder itself) stay behind the
+    // location permissions on every API level.
+    val nearbyWifiDevicesPermissionState =
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            null
+        } else {
+            rememberPermissionStateSafe(Manifest.permission.NEARBY_WIFI_DEVICES) { granted ->
+                if (granted) {
+                    // Continue with the location permissions before opening the Wi-Fi tab.
+                    val allPermissionsGranted = requestLocationPermissions(
+                        foregroundLocationPermissionState = foregroundLocationPermissionsState,
+                        onOpenForegroundLocationPermissionRationale = {
+                            foregroundLocationPermissionRationaleOpen = true
+                        },
+                        backgroundLocationPermissionState = backgroundLocationPermissionState,
+                        onOpenBackgroundLocationPermissionRationale = {
+                            backgroundLocationPermissionRationaleOpen = true
+                        }
+                    )
+
+                    if (allPermissionsGranted) {
+                        selectedTab = wifiTabIndex
+                    }
+                }
+            }
+        }
+
+    if (nearbyWifiPermissionRationaleOpen) {
+        NearbyWifiDevicesPermissionRationaleDialog(
+            onConfirm = {
+                nearbyWifiPermissionRationaleOpen = false
+                nearbyWifiDevicesPermissionState?.launchPermissionRequest()
+            },
+            onDismiss = { nearbyWifiPermissionRationaleOpen = false },
+        )
     }
 
     if (foregroundLocationPermissionRationaleOpen) {
@@ -262,6 +324,10 @@ fun ReminderDialog(
                     newLocationReminder != null
                 }
 
+                wifiTabIndex -> {
+                    newWifiReminder?.ssid?.isNotBlank() == true
+                }
+
                 else -> {
                     false
                 }
@@ -287,23 +353,48 @@ fun ReminderDialog(
 
                 PrimaryTabRow(selectedTabIndex = selectedTab) {
                     tabTitlesAndIcons.forEachIndexed { index, (title, icon) ->
-                        LeadingIconTab(
-                            text = { Text(title) },
+                        // A stacked icon-over-text Tab: three side-by-side LeadingIconTabs don't
+                        // fit the dialog's width and wrap their labels.
+                        Tab(
+                            text = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             icon = { Icon(icon, null) },
                             selected = selectedTab == index,
                             onClick = {
-                                if (index == locationTabIndex && !requestLocationPermissions(
-                                        foregroundLocationPermissionState = foregroundLocationPermissionsState,
-                                        onOpenForegroundLocationPermissionRationale = {
-                                            foregroundLocationPermissionRationaleOpen = true
-                                        },
-                                        backgroundLocationPermissionState = backgroundLocationPermissionState,
-                                        onOpenBackgroundLocationPermissionRationale = {
-                                            backgroundLocationPermissionRationaleOpen = true
-                                        }
-                                    )
-                                ) {
-                                    return@LeadingIconTab
+                                if (index == locationTabIndex) {
+                                    pendingPermissionTab = locationTabIndex
+                                    if (!requestLocationPermissions(
+                                            foregroundLocationPermissionState = foregroundLocationPermissionsState,
+                                            onOpenForegroundLocationPermissionRationale = {
+                                                foregroundLocationPermissionRationaleOpen = true
+                                            },
+                                            backgroundLocationPermissionState = backgroundLocationPermissionState,
+                                            onOpenBackgroundLocationPermissionRationale = {
+                                                backgroundLocationPermissionRationaleOpen = true
+                                            }
+                                        )
+                                    ) {
+                                        return@Tab
+                                    }
+                                }
+                                if (index == wifiTabIndex) {
+                                    pendingPermissionTab = wifiTabIndex
+                                    if (!requestWifiPermissions(
+                                            nearbyWifiDevicesPermissionState = nearbyWifiDevicesPermissionState,
+                                            onOpenNearbyWifiDevicesPermissionRationale = {
+                                                nearbyWifiPermissionRationaleOpen = true
+                                            },
+                                            foregroundLocationPermissionState = foregroundLocationPermissionsState,
+                                            onOpenForegroundLocationPermissionRationale = {
+                                                foregroundLocationPermissionRationaleOpen = true
+                                            },
+                                            backgroundLocationPermissionState = backgroundLocationPermissionState,
+                                            onOpenBackgroundLocationPermissionRationale = {
+                                                backgroundLocationPermissionRationaleOpen = true
+                                            }
+                                        )
+                                    ) {
+                                        return@Tab
+                                    }
                                 }
                                 selectedTab = index
                             }
@@ -329,6 +420,15 @@ fun ReminderDialog(
                             }
                         )
                     }
+
+                    wifiTabIndex -> {
+                        WifiReminder(
+                            wifiReminder = newWifiReminder,
+                            onReminderUpdated = { reminder ->
+                                newWifiReminder = reminder
+                            }
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(smallPadding))
@@ -350,6 +450,7 @@ fun ReminderDialog(
                             when (selectedTab) {
                                 timeTabIndex -> onConfirm(newTimeReminder!!)
                                 locationTabIndex -> onConfirm(newLocationReminder!!)
+                                wifiTabIndex -> onConfirm(newWifiReminder!!)
                             }
                         },
                         enabled = saveButtonEnabled
@@ -898,6 +999,228 @@ fun LocationPickerMap(
     }
 }
 
+@Composable
+fun WifiReminder(
+    wifiReminder: Reminder.WifiReminder?,
+    onReminderUpdated: (Reminder.WifiReminder?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val smallPadding = dimensionResource(R.dimen.padding_small)
+
+    var isWifiPickerOpen by remember { mutableStateOf(false) }
+
+    var ssid by remember { mutableStateOf(wifiReminder?.ssid) }
+
+    Column(
+        modifier = modifier,
+    ) {
+        TextButton(
+            onClick = { isWifiPickerOpen = true },
+        ) {
+            Icon(
+                ImageVector.vectorResource(R.drawable.wifi),
+                contentDescription = stringResource(R.string.wifi_network)
+            )
+            Spacer(Modifier.width(smallPadding))
+            Text(
+                text = ssid ?: stringResource(R.string.choose_a_network),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+
+    if (isWifiPickerOpen) {
+        WifiPickerDialog(
+            ssid = ssid,
+            onSsidSelected = { newSsid ->
+                isWifiPickerOpen = false
+                ssid = newSsid
+                onReminderUpdated(Reminder.WifiReminder(newSsid))
+            },
+            onDismiss = { isWifiPickerOpen = false }
+        )
+    }
+}
+
+// The SSID of the currently connected Wi-Fi network, or null if there is none or it's unreadable.
+@Suppress("DEPRECATION")
+private fun WifiManager.currentSsid(): String? {
+    val ssid = connectionInfo?.ssid
+    if (ssid == null || ssid == WifiManager.UNKNOWN_SSID) {
+        return null
+    }
+    return ssid.removeSurrounding("\"")
+}
+
+// The SSIDs of nearby networks from the most recent scan, strongest signal first.
+private fun WifiManager.scannedSsids(): List<String> {
+    val results = try {
+        scanResults
+    } catch (_: SecurityException) {
+        return listOf()
+    }
+
+    return results
+        .mapNotNull { result ->
+            val ssid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                result.wifiSsid?.toString()?.removeSurrounding("\"")
+            } else {
+                @Suppress("DEPRECATION")
+                result.SSID
+            }
+            // Hidden networks have a blank SSID.
+            if (ssid.isNullOrBlank()) null else Pair(ssid, result.level)
+        }
+        // The same network can appear once per access point.
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, levels) -> levels.max() }
+        .toList()
+        .sortedByDescending { it.second }
+        .map { it.first }
+}
+
+@Composable
+fun WifiPickerDialog(
+    ssid: String?,
+    onSsidSelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val smallPadding = dimensionResource(R.dimen.padding_small)
+    val context = LocalContext.current
+
+    val wifiManager = if (LocalInspectionMode.current) {
+        // Don't access the wifi manager if only previewing.
+        null
+    } else {
+        remember {
+            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        }
+    }
+
+    val connectedSsid = remember { wifiManager?.currentSsid() }
+
+    // Pre-select the currently connected network when not editing an existing reminder.
+    var selectedSsid by remember { mutableStateOf(ssid ?: connectedSsid ?: "") }
+    var scannedSsids by remember { mutableStateOf(wifiManager?.scannedSsids() ?: listOf()) }
+
+    // Cached scan results are shown immediately; a fresh scan updates them when it completes.
+    // Scans are throttled by the OS, so a request may silently do nothing.
+    @Suppress("DEPRECATION")
+    fun startScan() {
+        wifiManager?.startScan()
+    }
+
+    DisposableEffect(wifiManager) {
+        if (wifiManager == null) {
+            onDispose {}
+        } else {
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    scannedSsids = wifiManager.scannedSsids()
+                }
+            }
+            ContextCompat.registerReceiver(
+                context,
+                receiver,
+                IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            startScan()
+            onDispose { context.unregisterReceiver(receiver) }
+        }
+    }
+
+    // The connected network belongs in the list even when it's missing from the scan results.
+    val allSsids = (listOfNotNull(connectedSsid) + scannedSsids).distinct()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            tonalElevation = 8.dp,
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(smallPadding),
+                modifier = Modifier
+                    .padding(dimensionResource(R.dimen.padding_medium))
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = selectedSsid,
+                        onValueChange = { selectedSsid = it },
+                        label = { Text(stringResource(R.string.network_name)) },
+                        leadingIcon = {
+                            Icon(
+                                ImageVector.vectorResource(R.drawable.wifi),
+                                contentDescription = null
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.weight(1.0f)
+                    )
+                    IconButton(onClick = { startScan() }) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.refresh)
+                        )
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                ) {
+                    items(allSsids) { scannedSsid ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(smallPadding),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedSsid = scannedSsid }
+                                .padding(smallPadding)
+                        ) {
+                            Icon(
+                                ImageVector.vectorResource(R.drawable.wifi),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                text = scannedSsid,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1.0f)
+                            )
+                            if (scannedSsid == selectedSsid) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    TextButton(
+                        onClick = onDismiss
+                    ) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                    Button(
+                        onClick = { onSsidSelected(selectedSsid) },
+                        enabled = selectedSsid.isNotBlank(),
+                    ) {
+                        Text(stringResource(R.string.done))
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalPermissionsApi::class)
 fun requestLocationPermissions(
     foregroundLocationPermissionState: MultiplePermissionsState?,
@@ -932,6 +1255,37 @@ fun requestLocationPermissions(
     }
 
     return true
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+fun requestWifiPermissions(
+    nearbyWifiDevicesPermissionState: PermissionState?,
+    onOpenNearbyWifiDevicesPermissionRationale: () -> Unit,
+    foregroundLocationPermissionState: MultiplePermissionsState?,
+    onOpenForegroundLocationPermissionRationale: () -> Unit,
+    backgroundLocationPermissionState: PermissionState?,
+    onOpenBackgroundLocationPermissionRationale: () -> Unit,
+): Boolean {
+    // From API 33, scanning for Wi-Fi networks requires NEARBY_WIFI_DEVICES.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (nearbyWifiDevicesPermissionState?.status?.isGranted == false) {
+            if (nearbyWifiDevicesPermissionState.status.shouldShowRationale) {
+                onOpenNearbyWifiDevicesPermissionRationale()
+            } else {
+                nearbyWifiDevicesPermissionState.launchPermissionRequest()
+            }
+            return false
+        }
+    }
+
+    // SSIDs count as location data on every API level, so the Wi-Fi tab needs the same location
+    // permissions as the Location tab.
+    return requestLocationPermissions(
+        foregroundLocationPermissionState,
+        onOpenForegroundLocationPermissionRationale,
+        backgroundLocationPermissionState,
+        onOpenBackgroundLocationPermissionRationale,
+    )
 }
 
 @Composable
@@ -991,6 +1345,34 @@ fun BackgroundLocationPermissionRationaleDialog(
     )
 }
 
+@Composable
+fun NearbyWifiDevicesPermissionRationaleDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(stringResource(R.string.nearby_wifi_permission_rationale_title))
+        },
+        text = {
+            Text(stringResource(R.string.nearby_wifi_permission_rationale_description))
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.yes))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.no))
+            }
+        },
+        modifier = modifier,
+    )
+}
+
 
 @Composable
 fun ReminderInfo(
@@ -1043,153 +1425,22 @@ fun ReminderInfo(
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
+
+                is Reminder.WifiReminder -> {
+                    Icon(
+                        ImageVector.vectorResource(R.drawable.wifi),
+                        stringResource(R.string.wifi_reminder),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+
+                    Text(
+                        text = reminder.ssid,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
-        }
-    }
-}
-
-
-@Preview(device = "id:pixel_9", showSystemUi = true)
-@Preview(
-    device = "id:pixel_9", showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
-)
-@Composable
-fun ReminderDialogPreview() {
-    TodoTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            ReminderDialog(
-                todoListReminder = null,
-                onConfirm = {},
-                onDelete = {},
-                onDismiss = {},
-            )
-        }
-    }
-}
-
-@Preview(device = "id:pixel_9", showSystemUi = true)
-@Preview(
-    device = "id:pixel_9", showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
-)
-@Composable
-fun ReminderDialogTimePreview() {
-    TodoTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            ReminderDialog(
-                todoListReminder = Reminder.TimeReminder(
-                    dateTime = LocalDateTime.of(
-                        /* year = */ 2023,
-                        /* month = */ 1,
-                        /* dayOfMonth = */ 30,
-                        /* hour = */ 15,
-                        /* minute = */ 35
-                    )
-                ),
-                onConfirm = {},
-                onDelete = {},
-                onDismiss = {},
-            )
-        }
-    }
-}
-
-@Preview(device = "id:pixel_9", showSystemUi = true)
-@Preview(
-    device = "id:pixel_9", showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
-)
-@Composable
-fun ReminderDialogLocationPreview() {
-    TodoTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            ReminderDialog(
-                todoListReminder = Reminder.LocationReminder(
-                    Location(
-                        LatLng(0.0, 0.0),
-                        DEFAULT_GEOFENCE_RADIUS,
-                        "The Whitehouse"
-                    )
-                ),
-                onConfirm = {},
-                onDelete = {},
-                onDismiss = {},
-            )
-        }
-    }
-}
-
-@Preview(device = "id:pixel_9", showSystemUi = true)
-@Preview(
-    device = "id:pixel_9", showSystemUi = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
-)
-@Composable
-fun LocationPickerDialogPreview() {
-    TodoTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            LocationPickerDialog(
-                location = null,
-                onLocationSelected = {},
-                onDismiss = {},
-            )
-        }
-    }
-}
-
-@Preview(device = "id:pixel_9")
-@Preview(
-    device = "id:pixel_9",
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
-)
-@Composable
-fun TimeReminderInfoPreview() {
-    TodoTheme {
-        Surface(
-            color = MaterialTheme.colorScheme.background
-        ) {
-            ReminderInfo(
-                Reminder.TimeReminder(LocalDateTime.of(2023, 12, 12, 10, 0)),
-                onClick = {},
-            )
-        }
-    }
-}
-
-@Preview(device = "id:pixel_9")
-@Preview(
-    device = "id:pixel_9",
-    uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL
-)
-@Composable
-fun LocationReminderInfoPreview() {
-    TodoTheme {
-        Surface(
-            color = MaterialTheme.colorScheme.background
-        ) {
-            ReminderInfo(
-                Reminder.LocationReminder(
-                    Location(
-                        LatLng(0.0, 0.0),
-                        100.0,
-                        "Sydney, Australia"
-                    )
-                ),
-                onClick = {},
-            )
         }
     }
 }

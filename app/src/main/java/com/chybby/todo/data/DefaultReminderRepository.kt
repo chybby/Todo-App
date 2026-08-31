@@ -8,8 +8,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import androidx.work.WorkManager
 import com.chybby.todo.AlarmReceiver
 import com.chybby.todo.GeofenceReceiver
+import com.chybby.todo.data.workers.CheckWifiRemindersWorker
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
@@ -23,6 +25,7 @@ import javax.inject.Inject
 
 class DefaultReminderRepository @Inject constructor(
     @param:ApplicationContext val context: Context,
+    private val workManager: WorkManager,
 ) : ReminderRepository {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
@@ -115,6 +118,41 @@ class DefaultReminderRepository @Inject constructor(
         return Result.success(Unit)
     }
 
+    // Without these permissions the worker can't read the connected SSID, so fail at save time
+    // rather than silently never firing. SSIDs count as location data: reading them is gated
+    // behind the location permissions on every API level (NEARBY_WIFI_DEVICES only covers the
+    // connect/manage Wi-Fi APIs and the picker's scans, not SSID reads).
+    private fun checkWifiReminderPermissions(): Result<Unit> {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (context.checkSelfPermission(Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
+                Timber.w("NEARBY_WIFI_DEVICES permission missing")
+                return Result.failure(IllegalStateException())
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            if (context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                Timber.w("ACCESS_FINE_LOCATION permission missing")
+                return Result.failure(IllegalStateException())
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                context.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED
+            ) {
+                Timber.w("ACCESS_BACKGROUND_LOCATION permission missing")
+                return Result.failure(IllegalStateException())
+            }
+        }
+
+        return Result.success(Unit)
+    }
+
+    override fun updateWifiWatch(wifiRemindersExist: Boolean) {
+        if (wifiRemindersExist) {
+            CheckWifiRemindersWorker.armNow(workManager)
+        } else {
+            CheckWifiRemindersWorker.cancel(workManager)
+        }
+    }
+
     override suspend fun createReminder(listId: Long, reminder: Reminder): Result<Unit> {
         when (reminder) {
             is Reminder.TimeReminder -> {
@@ -137,6 +175,25 @@ class DefaultReminderRepository @Inject constructor(
                     reminder.location.radius.toFloat()
                 )
                 if (result.isFailure) {
+                    return result
+                }
+                deleteAlarm(listId)
+                return Result.success(Unit)
+            }
+
+            is Reminder.WifiReminder -> {
+                var result = checkWifiReminderPermissions()
+                if (result.isFailure) {
+                    return result
+                }
+                // This runs before the reminder is written to the database, so the immediate
+                // run may not see it yet. editTodoListReminder syncs the watch again after the
+                // write, and that replacement run does.
+                CheckWifiRemindersWorker.armNow(workManager)
+                result = deleteGeofence(listId)
+                if (result.isFailure) {
+                    // Leave the watch armed: it may be serving other lists' Wi-Fi reminders.
+                    // updateWifiWatch cancels it when none remain.
                     return result
                 }
                 deleteAlarm(listId)
@@ -171,6 +228,13 @@ class DefaultReminderRepository @Inject constructor(
             }
 
             is Reminder.LocationReminder -> deleteGeofence(listId)
+
+            is Reminder.WifiReminder -> {
+                // The Wi-Fi watch work is shared by all lists, so there is no per-list trigger
+                // to delete. updateWifiWatch cancels it once no Wi-Fi reminder remains in the
+                // database.
+                Result.success(Unit)
+            }
 
             null -> {
                 deleteAlarm(listId)

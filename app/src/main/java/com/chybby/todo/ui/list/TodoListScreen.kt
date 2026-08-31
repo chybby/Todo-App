@@ -121,7 +121,7 @@ import timber.log.Timber
 
 // TODO: Undo accidentally deleting an item.
 // TODO: Confirm when deleting all completed items.
-// TODO: Notifications when connecting to a specific Wi-Fi
+// TODO: Placeholder text when list name empty.
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable

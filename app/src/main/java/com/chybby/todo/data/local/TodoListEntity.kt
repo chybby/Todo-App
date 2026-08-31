@@ -40,6 +40,10 @@ data class TodoListEntity(
     @ColumnInfo(name = "reminder_location_description")
     val reminderLocationDescription: String?,
 
+    // The SSID of a Wi-Fi network, unquoted.
+    @ColumnInfo(name = "reminder_wifi_ssid")
+    val reminderWifiSsid: String?,
+
     @ColumnInfo(name = "notification_id", index = true)
     val notificationId: Int?,
 )
